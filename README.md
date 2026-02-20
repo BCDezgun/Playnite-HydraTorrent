@@ -106,8 +106,8 @@
 
 **The most convenient way to download repacks directly within Playnite** *(Like Hydra Launcher, but better and more native)*
 
-![GitHub stars](https://img.shields.io/github/stars/YOUR_USERNAME/Playnite-HydraTorrent?style=social)
-![License](https://img.shields.io/github/license/YOUR_USERNAME/Playnite-HydraTorrent)
+![GitHub stars](https://img.shields.io/github/stars/BCDezgun/Playnite-HydraTorrent?style=social)
+![License](https://img.shields.io/github/license/BCDezgun/Playnite-HydraTorrent)
 ![Playnite](https://img.shields.io/badge/Playnite-10.0+-blue)
 
 ---
