@@ -134,6 +134,7 @@ namespace HydraTorrent
             try
             {
                 var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+
                 using (var client = new QBittorrentClient(url))
                 {
                     await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
@@ -141,11 +142,20 @@ namespace HydraTorrent
                     var request = new AddTorrentsRequest();
                     request.TorrentUrls.Add(new Uri(torrentData.Magnet));
                     request.Paused = false;
-
-                    // ПЕРЕДАЕМ ВЫБРАННЫЙ ПУТЬ В QBITTORRENT
                     request.DownloadFolder = finalPath;
 
                     await client.AddTorrentsAsync(request);
+
+                    // === НАДЁЖНОЕ ПОЛУЧЕНИЕ HASH ===
+                    await Task.Delay(1200); // даём qBittorrent время обработать магнит
+
+                    var hash = ExtractHashFromMagnet(torrentData.Magnet);
+
+                    if (!string.IsNullOrEmpty(hash))
+                    {
+                        torrentData.TorrentHash = hash;
+                        SaveHydraData(game, torrentData);   // сохраняем с hash
+                    }
 
                     PlayniteApi.Notifications.Add(new NotificationMessage(
                         "Hydra Torrent",
@@ -187,6 +197,14 @@ namespace HydraTorrent
             }
 
             return null;
+        }
+
+        private string ExtractHashFromMagnet(string magnet)
+        {
+            if (string.IsNullOrEmpty(magnet)) return null;
+
+            var match = System.Text.RegularExpressions.Regex.Match(magnet, @"urn:btih:([a-fA-F0-9]{40})", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups[1].Value.ToLowerInvariant() : null;
         }
 
         private class HydraInstallController : InstallController
