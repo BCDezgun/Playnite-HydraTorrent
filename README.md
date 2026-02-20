@@ -3,8 +3,8 @@
 **Самый удобный способ скачивать репаков прямо внутри Playnite**  
 *(как Hydra Launcher, только лучше и роднее)*
 
-![GitHub stars](https://img.shields.io/github/stars/ТВОЙ_НИК/Playnite-HydraTorrent?style=social)
-![License](https://img.shields.io/github/license/ТВОЙ_НИК/Playnite-HydraTorrent)
+![GitHub stars](https://img.shields.io/github/stars/BCDezgun/Playnite-HydraTorrent?style=social)
+![License](https://img.shields.io/github/license/BCDezgun/Playnite-HydraTorrent)
 ![Playnite](https://img.shields.io/badge/Playnite-10.0+-blue)
 
 ---
