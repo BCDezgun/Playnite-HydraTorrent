@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Playnite.SDK;
 using Playnite.SDK.Models;
 using Playnite.SDK.Plugins;
+using Playnite.SDK.Events;
 using QBittorrent.Client;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using HydraTorrent.Services;
 
 namespace HydraTorrent
 {
@@ -29,10 +31,23 @@ namespace HydraTorrent
 
         private const string TorrentDataFolder = "HydraTorrents";
 
+        private TorrentMonitor _monitor;
+
+        // Наше "быстрое" хранилище: ID игры -> Объект с данными
+        public static Dictionary<Guid, TorrentStatusInfo> LiveStatus = new Dictionary<Guid, TorrentStatusInfo>();
+
+        public class TorrentStatusInfo
+        {
+            public string Status { get; set; }
+            public double Progress { get; set; }
+            public long DownloadSpeed { get; set; } // Можно добавить и скорость!
+        }
+
         public HydraTorrent(IPlayniteAPI api) : base(api)
         {
             settings = new HydraTorrentSettingsViewModel(this);
             Properties = new LibraryPluginProperties { HasSettings = true };
+            _monitor = new TorrentMonitor(api, this);
         }
 
         // ====================== ХРАНЕНИЕ ДАННЫХ ТОРРЕНТА ======================
@@ -43,7 +58,7 @@ namespace HydraTorrent
             return Path.Combine(dataDir, $"{gameId}.json");
         }
 
-        private TorrentResult GetHydraData(Game game)
+        public TorrentResult GetHydraData(Game game)
         {
             if (game == null) return null;
             var filePath = GetTorrentDataPath(game.Id);
@@ -267,9 +282,22 @@ namespace HydraTorrent
             return settings;
         }
 
+        public HydraTorrentSettingsViewModel GetSettings() => settings;
+
         public override UserControl GetSettingsView(bool firstRunSettings)
         {
             return new HydraTorrentSettingsView(settings);
         }
+        public override void OnApplicationStarted(OnApplicationStartedEventArgs args)
+        {
+            base.OnApplicationStarted(args);
+            _monitor.Start();
+        }
+
+        public override void Dispose()
+        {
+            _monitor?.Dispose();
+            base.Dispose();
+        }        
     }
 }
