@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
-using static HydraTorrent.HydraTorrent;
+
 
 namespace HydraTorrent.Services
 {
@@ -23,11 +23,10 @@ namespace HydraTorrent.Services
             _api = api;
             _plugin = plugin;
 
-            _timer = new Timer(3000); // каждые 3 секунды
+            _timer = new Timer(3000);
             _timer.Elapsed += Timer_Elapsed;
 
-            // Клиент для qBittorrent (используем настройки плагина)
-            var qb = _plugin.GetSettings().Settings; // добавим метод позже
+            var qb = _plugin.GetSettings().Settings;
             var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
             _client = new QBittorrentClient(url);
         }
@@ -36,18 +35,21 @@ namespace HydraTorrent.Services
         {
             if (_isRunning) return;
 
-            try
+            Task.Run(async () =>
             {
-                _client.LoginAsync(
-                    _plugin.GetSettings().Settings.QBittorrentUsername,
-                    _plugin.GetSettings().Settings.QBittorrentPassword ?? "")
-                    .Wait();
-
-                _timer.Start();
-                _isRunning = true;
-                _api.Notifications.Add(new NotificationMessage("HydraTorrent", "Мониторинг торрентов запущен", NotificationType.Info));
-            }
-            catch { /* тихо, если qBittorrent не запущен */ }
+                try
+                {
+                    var qb = _plugin.GetSettings().Settings;
+                    await _client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+                    _timer.Start();
+                    _isRunning = true;
+                    HydraTorrent.logger.Info("Hydra Monitor: qBittorrent connected.");
+                }
+                catch (Exception ex)
+                {
+                    HydraTorrent.logger.Warn($"Hydra Monitor: Could not connect to qBittorrent. {ex.Message}");
+                }
+            });
         }
 
         private async void Timer_Elapsed(object sender, ElapsedEventArgs e)
@@ -57,48 +59,79 @@ namespace HydraTorrent.Services
             try
             {
                 var torrents = await _client.GetTorrentListAsync();
+                // Берем список наших игр один раз, чтобы не дергать базу в тройном цикле
+                var hydraGames = _api.Database.Games.Where(g => g.PluginId == _plugin.Id).ToList();
 
                 foreach (var torrent in torrents)
                 {
-                    // Находим все игры Hydra, у которых совпадает Hash
-                    var games = _api.Database.Games
-                        .Where(g => g.PluginId == _plugin.Id)
-                        .ToList();
+                    var targetGame = hydraGames.FirstOrDefault(g => _plugin.GetHydraData(g)?.TorrentHash == torrent.Hash);
 
-                    foreach (var game in games)
+                    if (targetGame != null)
                     {
-                        var data = _plugin.GetHydraData(game);
-                        if (data?.TorrentHash == torrent.Hash)
-                        {
-                            UpdateGameProgress(game, torrent);
-                        }
+                        UpdateGameProgress(targetGame, torrent);
                     }
                 }
             }
-            catch { /* не падаем, если qBittorrent недоступен */ }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Error(ex, "Error during torrent monitoring tick.");
+            }
         }
 
         private void UpdateGameProgress(Game game, TorrentInfo torrent)
         {
-            var status = new TorrentStatusInfo
+            var progressPercent = torrent.Progress * 100;
+            string dynamicName;
+
+            // 1. Формируем текст статуса
+            if (torrent.State.ToString().Contains("Downloading") && !torrent.State.ToString().Contains("Paused"))
             {
-                Status = torrent.State.ToString(),
-                Progress = torrent.Progress * 100,
+                dynamicName = $"Загрузка: {progressPercent:F1}% ({torrent.DownloadSpeed / 1024 / 1024:F1} МБ/с)";
+            }
+            else if (progressPercent >= 100)
+            {
+                dynamicName = "Загрузка: Завершена";
+            }
+            else
+            {
+                dynamicName = $"Загрузка: Пауза ({progressPercent:F1}%)";
+            }
+
+            // 2. Обновляем LiveStatus (ВАЖНО для контроллера установки!)
+            HydraTorrent.LiveStatus[game.Id] = new HydraTorrent.TorrentStatusInfo
+            {
+                Progress = progressPercent,
+                Status = dynamicName,
                 DownloadSpeed = torrent.DownloadSpeed
             };
 
-            // Обновляем словарь в памяти
-            HydraTorrent.LiveStatus[game.Id] = status;
+            // 3. Обновляем визуальный статус в Playnite
+            var status = _api.Database.CompletionStatuses
+                .FirstOrDefault(s => s.Name.StartsWith("Загрузка:", StringComparison.OrdinalIgnoreCase));
 
-            // Playnite не узнает об обновлении, пока мы не заставим интерфейс перерисоваться
-            // Но данные уже доступны для использования!
+            if (status == null)
+            {
+                status = new CompletionStatus(dynamicName);
+                _api.Database.CompletionStatuses.Add(status);
+            }
+            else
+            {
+                status.Name = dynamicName;
+                _api.Database.CompletionStatuses.Update(status);
+            }
+
+            // Привязываем статус к игре
+            if (game.CompletionStatusId != status.Id)
+            {
+                game.CompletionStatusId = status.Id;
+                _api.Database.Games.Update(game);
+            }
         }
 
         public void Stop()
         {
             _timer.Stop();
             _isRunning = false;
-            _client?.Dispose();
         }
 
         public void Dispose() => Stop();
