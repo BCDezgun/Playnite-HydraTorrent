@@ -1,6 +1,7 @@
 ﻿using HydraTorrent.Models;
 using HydraTorrent.Scrapers;
 using HydraTorrent.Services;
+using HydraTorrent.Views;
 using Newtonsoft.Json;
 using Playnite.SDK;
 using Playnite.SDK.Events;
@@ -21,14 +22,11 @@ namespace HydraTorrent
     public class HydraTorrent : LibraryPlugin
     {
         private ScraperService _scraperService = new ScraperService();
-        private SearchWindow _currentSearchWindow;
         public static readonly ILogger logger = LogManager.GetLogger(); // Сделали PUBLIC
         private HydraTorrentSettingsViewModel settings { get; set; }
-
         public override Guid Id { get; } = Guid.Parse("c2177dc7-8179-4098-8b6c-d683ce415279");
         public override string Name => "HydraTorrent";
         public override LibraryClient Client { get; } = new HydraTorrentClient();
-
         private const string TorrentDataFolder = "HydraTorrents";
         private TorrentMonitor _monitor;
 
@@ -47,7 +45,7 @@ namespace HydraTorrent
             settings = new HydraTorrentSettingsViewModel(this);
             Properties = new LibraryPluginProperties { HasSettings = true };
             _monitor = new TorrentMonitor(api, this);
-        }
+        }        
 
         // ====================== ХРАНЕНИЕ ДАННЫХ ======================
         private string GetTorrentDataPath(Guid gameId)
@@ -196,22 +194,23 @@ namespace HydraTorrent
         }
 
         // ====================== ИНТЕРФЕЙС И СОБЫТИЯ ======================
+
         public override IEnumerable<SidebarItem> GetSidebarItems()
         {
             yield return new SidebarItem
             {
-                Title = "🔍 Поиск торрентов (Hydra)",
-                Type = SiderbarItemType.Button,
-                Icon = new TextBlock { Text = "🔍", FontSize = 22, FontFamily = new FontFamily("Segoe UI Emoji") },
-                Activated = () => {
-                    if (_currentSearchWindow == null || !_currentSearchWindow.IsLoaded)
-                    {
-                        _currentSearchWindow = new SearchWindow(PlayniteApi, this);
-                        _currentSearchWindow.Closed += (s, e) => _currentSearchWindow = null;
-                        _currentSearchWindow.Show();
-                    }
-                    else { _currentSearchWindow.Activate(); }
-                }
+                Title = "Hydra Hub",
+                Type = SiderbarItemType.View,   // ← вот так, с опечаткой SiderbarItemType
+
+                Icon = new TextBlock
+                {
+                    Text = "🐙",
+                    FontSize = 22,
+                    FontFamily = ResourceProvider.GetResource("FontIcoFont") as FontFamily
+                                 ?? new FontFamily("Segoe UI Emoji")
+                },
+
+                Opened = () => new HydraHubView(PlayniteApi, this)
             };
         }
 

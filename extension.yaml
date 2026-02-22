@@ -5,3 +5,4 @@ Version: 0.1
 Module: HydraTorrent.dll
 Type: GameLibrary
 Icon: icon.png
+RequiredApiVersion: 6.0.0
