@@ -1,525 +1,205 @@
 ﻿<UserControl x:Class="HydraTorrent.Views.HydraHubView" 
-
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
-
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
-
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-
              xmlns:local="clr-namespace:HydraTorrent.Views"
-
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1200">
 
-
     <UserControl.Resources>
-
         <local:ColumnWidthConverter x:Key="ColumnWidthConverter" />
-
         <local:InverseBoolConverter x:Key="InverseBoolConverter" />
 
-
         <Style x:Key="FilterCheckBoxStyle" TargetType="CheckBox">
-
             <Setter Property="Foreground" Value="White"/>
-
             <Setter Property="Margin" Value="0,5"/>
-
             <Style.Triggers>
-
                 <Trigger Property="IsEnabled" Value="False">
-
                     <Setter Property="Opacity" Value="0.5"/>
-
                 </Trigger>
-
             </Style.Triggers>
-
         </Style>
 
+        <Style x:Key="DeleteHistoryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <Path x:Name="Path" Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" 
+                                  Fill="#66FFFFFF" Stretch="Uniform" Width="10" Height="10"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Path" Property="Fill" Value="#FF5555"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
-
     <DockPanel LastChildFill="True">
-
         <Border DockPanel.Dock="Top" Background="Transparent" Height="52" BorderThickness="0,0,0,1">
-
             <Border.BorderBrush>
-
                 <SolidColorBrush Color="Gray" Opacity="0.2"/>
-
             </Border.BorderBrush>
-
             <DockPanel>
-
-
-                <Button x:Name="btnBack" Width="48" Height="48"
-
-Margin="8,0,0,0" Click="BtnBack_Click" Background="Transparent"
-
-BorderThickness="0" Cursor="Hand">
-
+                <Button x:Name="btnBack" Width="48" Height="48" Margin="8,0,0,0" Click="BtnBack_Click" Background="Transparent" BorderThickness="0" Cursor="Hand">
                     <Button.Template>
-
                         <ControlTemplate TargetType="Button">
-
-
-                            <Path
-
-Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
-
-Fill="#CCCCCC" Stretch="Uniform" Width="20" Height="20"
-
-HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
+                            <Path Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Fill="#CCCCCC" Stretch="Uniform" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </ControlTemplate>
-
                     </Button.Template>
-
                 </Button>
 
-
-                <TextBlock Text="Hydra Hub" Margin="12,0,0,0"
-
-VerticalAlignment="Center" FontSize="22" FontWeight="SemiBold"
-
-Foreground="White"/>
-
+                <TextBlock Text="Hydra Hub" Margin="12,0,0,0" VerticalAlignment="Center" FontSize="22" FontWeight="SemiBold" Foreground="White"/>
             </DockPanel>
-
         </Border>
 
-
         <TabControl x:Name="MainTabControl" Margin="0,8,0,0" Background="Transparent" BorderThickness="0">
-
             <TabItem Header="🔍 Поиск репаков">
-
                 <Grid Margin="15">
-
                     <Grid Margin="0,0,0,15" Height="40" VerticalAlignment="Top">
-
                         <Grid.ColumnDefinitions>
-
                             <ColumnDefinition Width="*"/>
-
                             <ColumnDefinition Width="Auto"/>
-
                         </Grid.ColumnDefinitions>
 
-
-                        <TextBox x:Name="txtSearch" Height="40"
-
-FontSize="18" Padding="15,0" Background="Transparent" Foreground="White"
-
-BorderBrush="White" BorderThickness="1"
-
-VerticalContentAlignment="Center" KeyDown="TxtSearch_KeyDown"
-
-TextChanged="TxtSearch_TextChanged">
-
+                        <TextBox x:Name="txtSearch" Height="40" FontSize="18" Padding="15,0" Background="Transparent" Foreground="White" BorderBrush="White" BorderThickness="1" VerticalContentAlignment="Center" KeyDown="TxtSearch_KeyDown" TextChanged="TxtSearch_TextChanged">
                             <TextBox.Resources>
-
                                 <Style TargetType="{x:Type Border}">
-
                                     <Setter Property="CornerRadius" Value="20"/>
-
                                 </Style>
-
                             </TextBox.Resources>
-
                         </TextBox>
 
-
-                        <Button x:Name="btnSearch" Grid.Column="1"
-
-Content="Искать" Height="40" Width="120" Margin="10,0,0,0"
-
-Click="BtnSearch_Click" FontSize="16">
-
+                        <Button x:Name="btnSearch" Grid.Column="1" Content="Искать" Height="40" Width="120" Margin="10,0,0,0" Click="BtnSearch_Click" FontSize="16">
                             <Button.Template>
-
                                 <ControlTemplate TargetType="Button">
-
                                     <Border Background="#2ECC71" CornerRadius="20">
-
                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
                                     </Border>
-
                                 </ControlTemplate>
-
                             </Button.Template>
-
                         </Button>
 
-
-
-                        <Popup x:Name="HistoryPopup"
-
-PlacementTarget="{Binding ElementName=txtSearch}" Placement="Bottom"
-
-StaysOpen="False" AllowsTransparency="True">
-
-
-                            <Border Background="#E61E1E1E"
-
-BorderBrush="#44FFFFFF" BorderThickness="1" CornerRadius="12"
-
-Width="{Binding ElementName=txtSearch, Path=ActualWidth}">
-
-
-                                <ListBox x:Name="lstHistory"
-
-Background="Transparent" BorderThickness="0" Foreground="White"
-
-SelectionChanged="LstHistory_SelectionChanged">
-
+                        <Popup x:Name="HistoryPopup" PlacementTarget="{Binding ElementName=txtSearch}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+                            <Border Background="#E61E1E1E" BorderBrush="#44FFFFFF" BorderThickness="1" CornerRadius="12" Width="{Binding ElementName=txtSearch, Path=ActualWidth}">
+                                <ListBox x:Name="lstHistory" Background="Transparent" BorderThickness="0" Foreground="White" SelectionChanged="LstHistory_SelectionChanged">
                                     <ListBox.ItemTemplate>
-
                                         <DataTemplate>
-
-                                            <TextBlock Text="{Binding}" Margin="10,5"/>
-
+                                            <Grid Width="{Binding ElementName=lstHistory, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.95}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding}" Margin="10,5" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" 
+                                                        Style="{StaticResource DeleteHistoryButtonStyle}" 
+                                                        Tag="{Binding}" 
+                                                        Click="BtnDeleteHistory_Click" 
+                                                        VerticalAlignment="Center" 
+                                                        Width="30" Height="30"
+                                                        ToolTip="Удалить из истории"/>
+                                            </Grid>
                                         </DataTemplate>
-
                                     </ListBox.ItemTemplate>
-
                                 </ListBox>
-
                             </Border>
-
                         </Popup>
-
                     </Grid>
-
 
                     <Grid Margin="0,55,0,70">
-
                         <Grid.ColumnDefinitions>
-
                             <ColumnDefinition Width="0.8*"/>
-
                             <ColumnDefinition Width="0.2*"/>
-
                         </Grid.ColumnDefinitions>
 
-
-                        <ListView x:Name="lstResults" 
-
-          Grid.Column="0"
-
-          Background="Transparent" Foreground="White" 
-
-          BorderThickness="0" MouseDoubleClick="LstResults_MouseDoubleClick">
-
+                        <ListView x:Name="lstResults" Grid.Column="0" Background="Transparent" Foreground="White" BorderThickness="0" MouseDoubleClick="LstResults_MouseDoubleClick">
                             <ListView.View>
-
                                 <GridView>
-
-                                    <GridViewColumn Header="Название" 
-
-
-                            Width="{Binding ElementName=lstResults,
-
-Path=ActualWidth, Converter={StaticResource ColumnWidthConverter},
-
-ConverterParameter=0.72}">
-
+                                    <GridViewColumn Header="Название" Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.72}">
                                         <GridViewColumn.CellTemplate>
-
                                             <DataTemplate>
-
-                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-
+                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="White"/>
                                             </DataTemplate>
-
                                         </GridViewColumn.CellTemplate>
-
                                     </GridViewColumn>
-
-
-                                    <GridViewColumn Header="Размер" 
-
-                            DisplayMemberBinding="{Binding Size}" 
-
-
-                            Width="{Binding ElementName=lstResults,
-
-Path=ActualWidth, Converter={StaticResource ColumnWidthConverter},
-
-ConverterParameter=0.10}"/>
-
-
-                                    <GridViewColumn Header="Источник" 
-
-                            DisplayMemberBinding="{Binding Source}" 
-
-
-                            Width="{Binding ElementName=lstResults,
-
-Path=ActualWidth, Converter={StaticResource ColumnWidthConverter},
-
-ConverterParameter=0.125}"/>
-
-
-                                    <GridViewColumn Header="Год" 
-
-                            DisplayMemberBinding="{Binding Year}" 
-
-
-                            Width="{Binding ElementName=lstResults,
-
-Path=ActualWidth, Converter={StaticResource ColumnWidthConverter},
-
-ConverterParameter=0.05}"/>
-
+                                    <GridViewColumn Header="Размер" DisplayMemberBinding="{Binding Size}" Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.10}"/>
+                                    <GridViewColumn Header="Источник" DisplayMemberBinding="{Binding Source}" Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.125}"/>
+                                    <GridViewColumn Header="Год" DisplayMemberBinding="{Binding Year}" Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.05}"/>
                                 </GridView>
-
                             </ListView.View>
-
                         </ListView>
 
-
-
-                        <Border Grid.Column="1" Margin="15,0,0,0"
-
-Padding="5" Background="Transparent" BorderThickness="0"
-
-VerticalAlignment="Top">
-
+                        <Border Grid.Column="1" Margin="15,0,0,0" Padding="5" Background="Transparent" BorderThickness="0" VerticalAlignment="Top">
                             <StackPanel>
-
-
-                                <TextBlock Text="ФИЛЬТРЫ ПОИСКА"
-
-Foreground="#888" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"
-
-Opacity="0.7"/>
-
+                                <TextBlock Text="ФИЛЬТРЫ ПОИСКА" Foreground="#888" FontSize="11" FontWeight="Bold" Margin="0,0,0,15" Opacity="0.7"/>
                                 <TextBlock Text="Источники:" Foreground="White" FontSize="14" Margin="0,0,0,8"/>
-
-
-
-                                <ComboBox x:Name="cmbSources"
-
-Height="35" Background="Transparent" Foreground="White"
-
-BorderThickness="0">
-
+                                <ComboBox x:Name="cmbSources" Height="35" Background="Transparent" Foreground="White" BorderThickness="0">
                                     <ComboBox.Template>
-
                                         <ControlTemplate TargetType="ComboBox">
-
                                             <Grid>
-
-
-                                                <ToggleButton
-
-x:Name="ToggleButton" BorderThickness="1" BorderBrush="#44FFFFFF"
-
-Background="#20FFFFFF" 
-
-
-                                                             
-
-IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
-
-RelativeSource={RelativeSource TemplatedParent}}"
-
-                                                              ClickMode="Press">
-
+                                                <ToggleButton x:Name="ToggleButton" BorderThickness="1" BorderBrush="#44FFFFFF" Background="#20FFFFFF" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press">
                                                     <ToggleButton.Template>
-
                                                         <ControlTemplate TargetType="ToggleButton">
-
-
-                                                            <Border
-
-Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding
-
-BorderBrush}" BorderThickness="1" CornerRadius="6">
-
+                                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6">
                                                                 <Grid Margin="10,0">
-
                                                                     <Grid.ColumnDefinitions>
-
                                                                         <ColumnDefinition Width="*"/>
-
                                                                         <ColumnDefinition Width="Auto"/>
-
                                                                     </Grid.ColumnDefinitions>
-
-
-
-
-                                                                    <TextBlock Text="{Binding SourceButtonText}" Foreground="White"
-
-VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-
-
-
-
-                                                                    <Path Grid.Column="1" Data="M0,0 L4,4 L8,0" Stroke="#888"
-
-StrokeThickness="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
-
+                                                                    <TextBlock Text="{Binding SourceButtonText}" Foreground="White" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                                    <Path Grid.Column="1" Data="M0,0 L4,4 L8,0" Stroke="#888" StrokeThickness="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
                                                                 </Grid>
-
                                                             </Border>
-
                                                         </ControlTemplate>
-
                                                     </ToggleButton.Template>
-
                                                 </ToggleButton>
-
-
-
-                                                <Popup
-
-x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding
-
-IsDropDownOpen}" AllowsTransparency="True" Focusable="False"
-
-PopupAnimation="Fade">
-
-
-                                                    <Border
-
-Background="#E61E1E1E" BorderBrush="#44FFFFFF" BorderThickness="1"
-
-CornerRadius="8" MinWidth="{TemplateBinding ActualWidth}"
-
-MaxHeight="400" Margin="0,4,0,0">
-
+                                                <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                                                    <Border Background="#E61E1E1E" BorderBrush="#44FFFFFF" BorderThickness="1" CornerRadius="8" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="400" Margin="0,4,0,0">
                                                         <ScrollViewer VerticalScrollBarVisibility="Auto">
-
                                                             <StackPanel Margin="10">
-
-                                                                <CheckBox Content="Все источники" 
-
-
-                                                                       
-
-  IsChecked="{Binding IsAllSourcesSelected, Mode=TwoWay}" 
-
-                                                                          Style="{StaticResource FilterCheckBoxStyle}" 
-
-                                                                          FontWeight="Bold"/>
-
-
+                                                                <CheckBox Content="Все источники" IsChecked="{Binding IsAllSourcesSelected, Mode=TwoWay}" Style="{StaticResource FilterCheckBoxStyle}" FontWeight="Bold"/>
                                                                 <Separator Background="#22FFFFFF" Margin="0,5"/>
-
-
                                                                 <ItemsControl ItemsSource="{Binding FilterSources}">
-
                                                                     <ItemsControl.ItemTemplate>
-
                                                                         <DataTemplate>
-
-                                                                            <CheckBox Content="{Binding Name}" 
-
-
-                                                                       
-
-              IsChecked="{Binding IsSelected, Mode=TwoWay}" 
-
-
-                                                                       
-
-              Style="{StaticResource FilterCheckBoxStyle}"
-
-
-                                                                       
-
-              IsEnabled="{Binding DataContext.IsAllSourcesSelected,
-
-RelativeSource={RelativeSource AncestorType=UserControl},
-
-Converter={StaticResource InverseBoolConverter}}"/>
-
+                                                                            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Style="{StaticResource FilterCheckBoxStyle}" IsEnabled="{Binding DataContext.IsAllSourcesSelected, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolConverter}}"/>
                                                                         </DataTemplate>
-
                                                                     </ItemsControl.ItemTemplate>
-
                                                                 </ItemsControl>
-
                                                             </StackPanel>
-
                                                         </ScrollViewer>
-
                                                     </Border>
-
                                                 </Popup>
-
                                             </Grid>
-
                                         </ControlTemplate>
-
                                     </ComboBox.Template>
-
                                 </ComboBox>
-
-
-
-                                <TextBlock Text="Дополнительные
-
-фильтры появятся здесь..." Foreground="#444" Margin="0,20,0,0"
-
-TextWrapping="Wrap" FontSize="11" FontStyle="Italic"/>
-
+                                <TextBlock Text="Дополнительные фильтры появятся здесь..." Foreground="#444" Margin="0,20,0,0" TextWrapping="Wrap" FontSize="11" FontStyle="Italic"/>
                             </StackPanel>
-
                         </Border>
-
                     </Grid>
 
-
-
-                    <StackPanel x:Name="pnlPagination"
-
-Orientation="Horizontal" HorizontalAlignment="Center"
-
-VerticalAlignment="Bottom" Margin="0,0,0,30"/>
-
-
-                    <TextBlock x:Name="txtStatus" Text="Введите
-
-название игры и нажмите Искать" VerticalAlignment="Bottom"
-
-HorizontalAlignment="Center" Foreground="#888"/>
-
+                    <StackPanel x:Name="pnlPagination" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,30"/>
+                    <TextBlock x:Name="txtStatus" Text="Введите название игры и нажмите Искать" VerticalAlignment="Bottom" HorizontalAlignment="Center" Foreground="#888"/>
                 </Grid>
-
             </TabItem>
-
 
             <TabItem Header="📥 Менеджер загрузок">
-
                 <Grid Background="Transparent">
-
                     <Grid.ColumnDefinitions>
-
                         <ColumnDefinition Width="9*"/>
-
                         <ColumnDefinition Width="290*"/>
-
                     </Grid.ColumnDefinitions>
-
-
-                    <TextBlock Text="Менеджер загрузок будет здесь"
-
-HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#888"
-
-Grid.Column="1" Margin="474,0,0,0"/>
-
+                    <TextBlock Text="Менеджер загрузок будет здесь" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#888" Grid.Column="1" Margin="474,0,0,0"/>
                 </Grid>
-
             </TabItem>
-
         </TabControl>
-
     </DockPanel>
-
-</UserControl> 
+</UserControl>

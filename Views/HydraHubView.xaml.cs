@@ -156,6 +156,24 @@ namespace HydraTorrent.Views
             }
         }
 
+        private void BtnDeleteHistory_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string queryToRemove)
+            {
+                var settings = _plugin.GetSettings().Settings;
+                if (settings.SearchHistory.Contains(queryToRemove))
+                {
+                    settings.SearchHistory.Remove(queryToRemove);
+                    _plugin.SavePluginSettings(settings);
+
+                    // Обновляем список в Popup, чтобы он сразу визуально изменился
+                    TxtSearch_TextChanged(null, null);
+                }
+            }
+            // Чтобы клик по кнопке удаления не вызывал поиск (событие SelectionChanged)
+            e.Handled = true;
+        }
+
         private void LstHistory_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (lstHistory.SelectedItem is string selectedQuery)
