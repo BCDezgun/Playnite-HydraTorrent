@@ -41,30 +41,34 @@ namespace HydraTorrent.Scrapers
 
         public async Task<List<TorrentResult>> SearchAsync(string query)
         {
-            // Проверяем, есть ли вообще источники в настройках
             if (string.IsNullOrWhiteSpace(query) || _settings.Sources == null || _settings.Sources.Count == 0)
-            {
                 return new List<TorrentResult>();
-            }
 
-            // Создаем список скрейперов динамически на основе настроек пользователя
             var scrapers = new List<IScraper>();
             foreach (var source in _settings.Sources)
             {
                 if (!string.IsNullOrWhiteSpace(source.Url))
                 {
-                    // Используем имя из настроек (которое подтянулось автоматически) или URL как имя
                     string displayName = string.IsNullOrWhiteSpace(source.Name) ? "Источник" : source.Name;
                     scrapers.Add(new JsonSourceScraper(displayName, source.Url));
                 }
             }
 
-            if (scrapers.Count == 0) return new List<TorrentResult>();
+            var tasks = scrapers.Select(async s =>
+            {
+                try
+                {
+                    return await s.SearchAsync(query, _httpClient);
+                }
+                catch (Exception ex)
+                {
+                    // Логируем ошибку, но не даем ей прервать поиск в других источниках
+                    HydraTorrent.logger.Warn($"Ошибка поиска в источнике: {ex.Message}");
+                    return new List<TorrentResult>();
+                }
+            });
 
-            // Запускаем поиск по всем добавленным источникам параллельно
-            var tasks = scrapers.Select(s => s.SearchAsync(query, _httpClient));
             var resultsArrays = await Task.WhenAll(tasks);
-
             return resultsArrays.SelectMany(r => r).ToList();
         }
     }
