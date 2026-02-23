@@ -16,6 +16,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
+using QBittorrent.Client;
 
 namespace HydraTorrent.Views
 {
@@ -25,10 +27,15 @@ namespace HydraTorrent.Views
         private readonly HydraTorrent _plugin;
         private readonly ScraperService _scraperService;
 
+        private DispatcherTimer _uiRefreshTimer;
+        private long _maxSpeedSeen = 0; // Для хранения пиковой скорости в байтах
+        private Guid _activeGameId = Guid.Empty; // ID игры, которую сейчас показываем в топе
+
         private List<TorrentResult> _allResults = new List<TorrentResult>(); // Хранит ВСЕ результаты последнего поиска
         private List<TorrentResult> _filteredResults = new List<TorrentResult>(); // Хранит результаты с учетом фильтров
         private int _currentPage = 1;
         private const int _itemsPerPage = 10;
+        public static HydraHubView CurrentInstance { get; private set; }
 
         // --- Свойства для фильтров ---
         public ObservableCollection<SourceFilterItem> FilterSources { get; set; } = new ObservableCollection<SourceFilterItem>();
@@ -59,6 +66,8 @@ namespace HydraTorrent.Views
         public HydraHubView(IPlayniteAPI api, HydraTorrent plugin)
         {
             InitializeComponent();
+
+            CurrentInstance = this;
             PlayniteApi = api;
             _plugin = plugin;
             _scraperService = plugin.GetScraperService();
@@ -83,6 +92,86 @@ namespace HydraTorrent.Views
             }
 
             this.DataContext = this;
+            InitDownloadManager();
+        }
+        private void InitDownloadManager()
+        {
+            _uiRefreshTimer = new DispatcherTimer();
+            _uiRefreshTimer.Interval = TimeSpan.FromSeconds(1);
+            _uiRefreshTimer.Tick += UIUpdateTimer_Tick;
+            _uiRefreshTimer.Start();
+        }
+        private void UIUpdateTimer_Tick(object sender, EventArgs e)
+        {
+            // Ищем в LiveStatus первую игру, которая сейчас качается
+            var activeDownload = HydraTorrent.LiveStatus.FirstOrDefault(x =>
+                x.Value.Status.Contains("Загрузка") && !x.Value.Status.Contains("Пауза"));
+
+            // Если ничего не качается, ищем просто любую активную запись (например, паузу)
+            if (activeDownload.Key == Guid.Empty)
+                activeDownload = HydraTorrent.LiveStatus.FirstOrDefault();
+
+            if (activeDownload.Key != Guid.Empty)
+            {
+                var status = activeDownload.Value;
+                var game = PlayniteApi.Database.Games.Get(activeDownload.Key);
+
+                if (game != null)
+                {
+                    UpdateDownloadUI(game, status);
+                }
+            }
+        }
+        public void UpdateDownloadUI(Game game, HydraTorrent.TorrentStatusInfo status)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (status == null) return;
+
+                if (txtCurrentGameName != null)
+                    txtCurrentGameName.Text = game?.Name?.ToUpper() ?? "ЗАГРУЗКА...";
+
+                long currentSpeedBytes = status.DownloadSpeed;
+                if (currentSpeedBytes > _maxSpeedSeen) _maxSpeedSeen = currentSpeedBytes;
+
+                lblCurrentSpeed.Text = FormatSpeed(currentSpeedBytes);
+                lblMaxSpeed.Text = FormatSpeed(_maxSpeedSeen);
+
+                double uiProgress = status.Progress;
+                if (uiProgress > 0 && uiProgress <= 1.0)
+                    uiProgress *= 100;
+
+                pbDownload.Value = uiProgress;
+
+                double downloadedGB = status.DownloadedSize / 1024.0 / 1024.0 / 1024.0;
+                double totalGB = status.TotalSize / 1024.0 / 1024.0 / 1024.0;
+
+                lblDownloadedAmount.Text = $"{uiProgress:F1}% ({downloadedGB:F1} ГБ / {totalGB:F1} ГБ)";
+
+                if (status.ETA.HasValue && status.ETA.Value.TotalSeconds > 0)
+                {
+                    string timeFormat = status.ETA.Value.TotalHours >= 1 ? @"hh\:mm\:ss" : @"mm\:ss";
+                    lblETA.Text = $"Осталось примерно: {status.ETA.Value.ToString(timeFormat)}";
+                }
+                else
+                {
+                    lblETA.Text = "Осталось: --:--:--";
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[Hydra] UI Updated: {uiProgress:F1}%");
+            });
+        }
+        private string FormatSpeed(long bytesPerSecond)
+        {
+            double mbps = (bytesPerSecond * 8.0) / (1024 * 1024); // Переводим в Мбит/с
+            return $"{mbps:F1} Мбит/с";
+        }
+        private void BtnPauseResume_Click(object sender, RoutedEventArgs e)
+        {
+            // Тут нам нужен доступ к _client из TorrentMonitor. 
+            // Проще всего в классе HydraTorrent сделать метод PauseGame(Guid gameId)
+            // И вызывать его отсюда:
+            // _plugin.PauseTorrent(_activeGameId);
         }
 
         // Логика фильтрации уже загруженных данных

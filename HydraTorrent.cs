@@ -38,6 +38,9 @@ namespace HydraTorrent
             public string Status { get; set; }
             public double Progress { get; set; }
             public long DownloadSpeed { get; set; }
+            public long TotalSize { get; set; }
+            public long DownloadedSize { get; set; }
+            public TimeSpan? ETA { get; set; }
         }
 
         public HydraTorrent(IPlayniteAPI api) : base(api)

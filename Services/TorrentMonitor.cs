@@ -1,4 +1,5 @@
-﻿using Playnite.SDK;
+﻿using HydraTorrent.Views;
+using Playnite.SDK;
 using Playnite.SDK.Models;
 using QBittorrent.Client;
 using System;
@@ -80,7 +81,7 @@ namespace HydraTorrent.Services
 
         private void UpdateGameProgress(Game game, TorrentInfo torrent)
         {
-            var progressPercent = torrent.Progress * 100;
+            var progressPercent = torrent.Progress;
             string dynamicName;
 
             // 1. Формируем текст статуса
@@ -102,8 +103,16 @@ namespace HydraTorrent.Services
             {
                 Progress = progressPercent,
                 Status = dynamicName,
-                DownloadSpeed = torrent.DownloadSpeed
+                DownloadSpeed = torrent.DownloadSpeed,
+                TotalSize = torrent.TotalSize ?? 0,
+                DownloadedSize = torrent.Downloaded ?? 0,
+                ETA = torrent.EstimatedTime
             };
+
+            if (HydraHubView.CurrentInstance != null)
+            {
+                HydraHubView.CurrentInstance.UpdateDownloadUI(game, HydraTorrent.LiveStatus[game.Id]);
+            }
 
             // 3. Обновляем визуальный статус в Playnite
             var status = _api.Database.CompletionStatuses
