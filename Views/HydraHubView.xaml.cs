@@ -17,8 +17,9 @@ namespace HydraTorrent.Views
     public partial class HydraHubView : UserControl
     {
         private readonly IPlayniteAPI PlayniteApi;
-        private readonly ScraperService _scraperService = new ScraperService();
         private readonly HydraTorrent _plugin;
+        // УБИРАЕМ создание нового сервиса здесь!
+        private readonly ScraperService _scraperService;
 
         private List<TorrentResult> _allResults = new List<TorrentResult>();
         private int _currentPage = 1;
@@ -29,6 +30,10 @@ namespace HydraTorrent.Views
             InitializeComponent();
             PlayniteApi = api;
             _plugin = plugin;
+
+            // ПОЛУЧАЕМ сервис из плагина (который мы создали в HydraTorrent.cs)
+            // Для этого в HydraTorrent.cs добавь публичное поле или свойство для _scraperService
+            _scraperService = plugin.GetScraperService();
         }
 
         // ==================== КНОПКА НАЗАД ====================
@@ -58,16 +63,25 @@ namespace HydraTorrent.Views
                 return;
             }
 
-            txtStatus.Text = $"🔎 Ищем «{query}» по всем источникам...";
+            // ПРОВЕРКА: Если источников нет, сразу предупреждаем
+            var settings = _plugin.GetSettings().Settings;
+            if (settings.Sources == null || settings.Sources.Count == 0)
+            {
+                txtStatus.Text = "⚠️ Источники не настроены! Добавьте их в настройках плагина.";
+                return;
+            }
+
+            txtStatus.Text = $"🔎 Ищем «{query}»...";
             lstResults.ItemsSource = null;
             btnSearch.IsEnabled = false;
             _currentPage = 1;
 
             try
             {
+                // Используем правильный сервис
                 _allResults = await _scraperService.SearchAsync(query);
 
-                if (_allResults.Count == 0)
+                if (_allResults == null || _allResults.Count == 0)
                 {
                     txtStatus.Text = "Ничего не найдено 😔";
                     pnlPagination.Children.Clear();
@@ -80,6 +94,7 @@ namespace HydraTorrent.Views
             catch (Exception ex)
             {
                 txtStatus.Text = $"Ошибка: {ex.Message}";
+                HydraTorrent.logger.Error(ex, "Search failed in Hub");
             }
             finally
             {
@@ -135,64 +150,79 @@ namespace HydraTorrent.Views
         {
             if (lstResults.SelectedItem is TorrentResult result)
             {
+                // 1. ПРОВЕРКА: А вдруг такая игра уже есть?
+                var existingGame = PlayniteApi.Database.Games.FirstOrDefault(g =>
+                    g.Name.Equals(result.Name, StringComparison.OrdinalIgnoreCase));
+
+                if (existingGame != null)
+                {
+                    var res = PlayniteApi.Dialogs.ShowMessage(
+                        $"Игра с похожим названием уже есть в библиотеке ({existingGame.Name}). Всё равно добавить новую версию?",
+                        "Внимание", MessageBoxButton.YesNo);
+                    if (res == MessageBoxResult.No) return;
+                }
+
                 var confirm = MessageBox.Show(
                     $"Добавить игру «{result.Name}» в библиотеку Playnite?",
-                    "Подтверждение добавления",
+                    "Подтверждение",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
 
                 if (confirm != MessageBoxResult.Yes) return;
 
                 string suggestedName = CleanGameName(result.Name);
-
                 var dialogResult = PlayniteApi.Dialogs.SelectString(
-                    "Отредактируйте название игры...\nУберите repack, версии, DLC, год и т.д.:",
-                    "Редактирование названия игры",
+                    "Отредактируйте название игры для корректного поиска метаданных:",
+                    "Название игры",
                     suggestedName);
 
                 if (!dialogResult.Result) return;
 
                 string finalName = dialogResult.SelectedString?.Trim();
-                if (string.IsNullOrEmpty(finalName))
-                {
-                    MessageBox.Show("Название не может быть пустым.", "Ошибка");
-                    return;
-                }
+                if (string.IsNullOrEmpty(finalName)) return;
 
                 try
                 {
-                    Guid myPluginId = Guid.Parse("c2177dc7-8179-4098-8b6c-d683ce415279");
-
                     var metadata = new GameMetadata
                     {
                         Name = finalName,
                         Source = new MetadataNameProperty("Hydra Torrent"),
                         IsInstalled = false
+                        // PluginId здесь НЕ НУЖЕН и вызывает ошибку
                     };
 
+                    // Импортируем игру в базу данных
                     var importedGame = PlayniteApi.Database.ImportGame(metadata);
 
                     if (importedGame != null)
                     {
-                        importedGame.PluginId = myPluginId;
+                        // А вот здесь мы уже работаем с реальным объектом Game из базы
+                        // и назначаем ему ID нашего плагина
+                        importedGame.PluginId = _plugin.Id;
+
                         importedGame.Notes = $"Источник: {result.Source}\n" +
                                              $"Оригинальное название: {result.Name}\n" +
                                              $"Magnet: {result.Magnet}";
 
+                        // Добавляем тег
                         var tag = PlayniteApi.Database.Tags.Add("Hydra Torrent");
                         if (importedGame.TagIds == null) importedGame.TagIds = new List<Guid>();
-                        importedGame.TagIds.Add(tag.Id);
+                        if (!importedGame.TagIds.Contains(tag.Id)) importedGame.TagIds.Add(tag.Id);
 
+                        // Сохраняем данные для торрента
                         _plugin.SaveHydraData(importedGame, result);
+
+                        // Обновляем игру в базе, чтобы сохранить PluginId, Notes и Tags
                         PlayniteApi.Database.Games.Update(importedGame);
+
                         PlayniteApi.MainView.SelectGame(importedGame.Id);
 
-                        txtStatus.Text = $"✅ Игра «{finalName}» успешно добавлена!";
+                        txtStatus.Text = $"✅ «{finalName}» добавлена!";
                     }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    PlayniteApi.Dialogs.ShowErrorMessage(ex.Message, "Ошибка добавления");
                 }
             }
         }

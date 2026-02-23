@@ -18,7 +18,7 @@ namespace HydraTorrent
     public partial class SearchWindow : Window
     {
         private readonly IPlayniteAPI PlayniteApi;
-        private readonly ScraperService _scraperService = new ScraperService();
+        private readonly ScraperService _scraperService;
         private readonly HydraTorrent _plugin;
         // Обновляем конструктор
         public SearchWindow(IPlayniteAPI api, HydraTorrent plugin)

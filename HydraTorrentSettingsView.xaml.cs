@@ -1,9 +1,13 @@
 ﻿using Playnite.SDK;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading; // Для таймера задержки
 using QBittorrent.Client;
 using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Net.Http;
+using Newtonsoft.Json.Linq;
 
 namespace HydraTorrent
 {
@@ -17,12 +21,14 @@ namespace HydraTorrent
             InitializeComponent();
             DataContext = vm;
 
-            // Важный момент: когда настройки открываются, PasswordBox пустой.
-            // Загружаем в него сохраненный пароль вручную.
+            // Связываем View и ViewModel для корректного сохранения
+            viewModel.SettingsView = this;
+
             txtPassword.Password = viewModel.Settings.QBittorrentPassword ?? "";
+
+            LoadSources();
         }
 
-        // 1. СОХРАНЕНИЕ ПАРОЛЯ: вызывается каждый раз при вводе символа
         private void txtPassword_PasswordChanged(object sender, RoutedEventArgs e)
         {
             if (viewModel.Settings != null)
@@ -31,14 +37,12 @@ namespace HydraTorrent
             }
         }
 
-        // 2. ВЫБОР ПАПКИ ПО УМОЛЧАНИЮ: вызывается кнопкой "Обзор" в настройках
         private void BrowseDefaultPath_Click(object sender, RoutedEventArgs e)
         {
             var path = API.Instance.Dialogs.SelectFolder();
             if (!string.IsNullOrEmpty(path))
             {
                 viewModel.Settings.DefaultDownloadPath = path;
-                // Обновляем текст в TextBox вручную, если Binding не успел сработать
                 DefaultPathText.Text = path;
             }
         }
@@ -46,36 +50,190 @@ namespace HydraTorrent
         private async void TestConnection_Click(object sender, RoutedEventArgs e)
         {
             var settings = viewModel.Settings;
-
             if (!settings.UseQbittorrent)
             {
                 API.Instance.Dialogs.ShowMessage("qBittorrent отключён в настройках плагина.", "Тест подключения");
                 return;
             }
 
-            // Здесь берем пароль напрямую из PasswordBox для теста
             string password = txtPassword.Password ?? "";
-
             var url = new Uri($"http://{settings.QBittorrentHost}:{settings.QBittorrentPort}");
             var client = new QBittorrentClient(url);
-
             try
             {
                 await client.LoginAsync(settings.QBittorrentUsername, password);
                 var version = await client.GetApiVersionAsync();
-
-                API.Instance.Dialogs.ShowMessage(
-                    $"✅ Подключение успешно!\n\n" +
-                    $"qBittorrent API v{version}\n" +
-                    $"Адрес: {url}", "Успех!");
+                API.Instance.Dialogs.ShowMessage($"✅ Подключение успешно!\nqBittorrent API v{version}", "Успех!");
             }
             catch (Exception ex)
             {
-                string errorMsg = ex.Message.Contains("403") || ex.Message.Contains("Unauthorized")
-                    ? "❌ Ошибка авторизации. Проверь логин и пароль."
-                    : $"❌ Ошибка: {ex.Message}";
+                API.Instance.Dialogs.ShowMessage($"❌ Ошибка: {ex.Message}", "Ошибка подключения");
+            }
+        }
 
-                API.Instance.Dialogs.ShowMessage(errorMsg, "Ошибка подключения");
+        // ==============================================
+        // ЛОГИКА ИСТОЧНИКОВ
+        // ==============================================
+
+        private readonly List<SourceRow> _sourceRows = new List<SourceRow>();
+
+        private void LoadSources()
+        {
+            SourcesPanel.Children.Clear();
+            _sourceRows.Clear();
+
+            foreach (var source in viewModel.Settings.Sources)
+            {
+                AddSourceRow(source);
+            }
+
+            if (_sourceRows.Count == 0)
+                AddSourceRow(new SourceEntry());
+        }
+
+        private void AddSource_Click(object sender, RoutedEventArgs e)
+        {
+            AddSourceRow(new SourceEntry());
+        }
+
+        private void AddSourceRow(SourceEntry entry)
+        {
+            var row = new SourceRow(entry, RemoveRow);
+            SourcesPanel.Children.Add(row);
+            _sourceRows.Add(row);
+        }
+
+        private void RemoveRow(SourceRow row)
+        {
+            SourcesPanel.Children.Remove(row);
+            _sourceRows.Remove(row);
+        }
+
+        public void SaveSources()
+        {
+            viewModel.Settings.Sources.Clear();
+            foreach (var row in _sourceRows)
+            {
+                var entry = row.GetEntry();
+                if (!string.IsNullOrWhiteSpace(entry.Url))
+                {
+                    viewModel.Settings.Sources.Add(entry);
+                }
+            }
+        }
+
+        // Вспомогательный класс строки (теперь без кнопки, с авто-проверкой)
+        private class SourceRow : Grid
+        {
+            private readonly TextBox _urlBox;
+            private readonly TextBlock _nameBlock;
+            private readonly Button _removeBtn;
+            private readonly SourceEntry _entry;
+            private readonly DispatcherTimer _typingTimer;
+
+            public SourceRow(SourceEntry entry, Action<SourceRow> onRemove)
+            {
+                _entry = entry;
+                Margin = new Thickness(0, 5, 0, 5);
+
+                // Инициализируем таймер задержки (700 мс)
+                _typingTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
+                _typingTimer.Tick += async (s, e) => {
+                    _typingTimer.Stop();
+                    await LoadNameAsync();
+                };
+
+                // Настраиваем колонки: URL (максимум места), Имя (авто), Кнопка удаления (фиксировано)
+                ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                _urlBox = new TextBox
+                {
+                    Text = entry.Url,
+                    Margin = new Thickness(0, 0, 10, 0),
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    Tag = "Введите URL JSON-источника..."
+                };
+                // Слушаем изменение текста
+                _urlBox.TextChanged += (s, e) => {
+                    _typingTimer.Stop();
+                    _typingTimer.Start();
+                };
+                Grid.SetColumn(_urlBox, 0);
+
+                _nameBlock = new TextBlock
+                {
+                    Text = entry.Name ?? "",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = System.Windows.Media.Brushes.SpringGreen, // Сделаем имя заметнее
+                    Margin = new Thickness(5, 0, 10, 0),
+                    FontWeight = FontWeights.SemiBold,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                };
+                Grid.SetColumn(_nameBlock, 1);
+
+                _removeBtn = new Button
+                {
+                    Content = "✕",
+                    Width = 30,
+                    Height = 25,
+                    Foreground = System.Windows.Media.Brushes.Red,
+                    ToolTip = "Удалить источник"
+                };
+                _removeBtn.Click += (s, e) => onRemove(this);
+                Grid.SetColumn(_removeBtn, 2);
+
+                Children.Add(_urlBox);
+                Children.Add(_nameBlock);
+                Children.Add(_removeBtn);
+
+                // Если при загрузке уже есть URL, пробуем подтянуть имя
+                if (!string.IsNullOrEmpty(entry.Url))
+                {
+                    Task.Run(async () => await LoadNameAsync());
+                }
+            }
+
+            private async Task LoadNameAsync()
+            {
+                // Выполняем в UI-потоке, так как будем менять текст
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                {
+                    var url = _urlBox.Text.Trim();
+
+                    if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http"))
+                    {
+                        _nameBlock.Text = "";
+                        return;
+                    }
+
+                    _nameBlock.Text = "⏳";
+
+                    try
+                    {
+                        using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                        {
+                            var json = await client.GetStringAsync(url);
+                            var data = JObject.Parse(json);
+                            string name = data["name"]?.ToString() ?? "OK";
+
+                            _nameBlock.Text = name;
+                            _entry.Name = name;
+                        }
+                    }
+                    catch
+                    {
+                        _nameBlock.Text = "⚠️"; // Ошибка связи или неверный формат
+                        _entry.Name = "";
+                    }
+                });
+            }
+
+            public SourceEntry GetEntry()
+            {
+                _entry.Url = _urlBox.Text.Trim();
+                return _entry;
             }
         }
     }

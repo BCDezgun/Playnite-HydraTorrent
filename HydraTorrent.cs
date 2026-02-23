@@ -21,7 +21,7 @@ namespace HydraTorrent
 {
     public class HydraTorrent : LibraryPlugin
     {
-        private ScraperService _scraperService = new ScraperService();
+        private ScraperService _scraperService;
         public static readonly ILogger logger = LogManager.GetLogger(); // Сделали PUBLIC
         private HydraTorrentSettingsViewModel settings { get; set; }
         public override Guid Id { get; } = Guid.Parse("c2177dc7-8179-4098-8b6c-d683ce415279");
@@ -42,10 +42,15 @@ namespace HydraTorrent
 
         public HydraTorrent(IPlayniteAPI api) : base(api)
         {
+            // 1. Сначала создаем настройки
             settings = new HydraTorrentSettingsViewModel(this);
+
+            // 2. Теперь создаем сервис скрейпера, передавая ему объект настроек внутри вью-модели
+            _scraperService = new ScraperService(settings.Settings);
+
             Properties = new LibraryPluginProperties { HasSettings = true };
             _monitor = new TorrentMonitor(api, this);
-        }        
+        }
 
         // ====================== ХРАНЕНИЕ ДАННЫХ ======================
         private string GetTorrentDataPath(Guid gameId)
@@ -220,5 +225,9 @@ namespace HydraTorrent
         public override UserControl GetSettingsView(bool firstRunSettings) => new HydraTorrentSettingsView(settings);
         public override void Dispose() { _monitor?.Dispose(); base.Dispose(); }
         public HydraTorrentSettingsViewModel GetSettings() => settings;
+        public ScraperService GetScraperService()
+        {
+            return _scraperService;
+        }
     }
 }
