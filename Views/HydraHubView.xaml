@@ -193,11 +193,99 @@
 
             <TabItem Header="📥 Менеджер загрузок">
                 <Grid Background="Transparent">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="9*"/>
-                        <ColumnDefinition Width="290*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Менеджер загрузок будет здесь" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#888" Grid.Column="1" Margin="474,0,0,0"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="2*"/>
+                        <RowDefinition Height="3*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Margin="10" Background="Transparent" ClipToBounds="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="0.6*"/>
+                                <ColumnDefinition Width="0.4*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Grid Grid.Column="0">
+                                <Image Stretch="UniformToFill" Opacity="0.3"
+                           Source="https://shared.fastly.steamstatic.com/store_images/library/632360/header.jpg"/>
+
+                                <StackPanel VerticalAlignment="Bottom" Margin="20,0,0,20">
+                                    <TextBlock Text="ЗАГРУЖАЕТСЯ" Foreground="#2ECC71" FontWeight="Bold" FontSize="12" Margin="0,0,0,5"/>
+                                    <TextBlock Text="Frostpunk 2" Foreground="White" FontSize="36" FontWeight="Bold">
+                                        <TextBlock.Effect>
+                                            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.9"/>
+                                        </TextBlock.Effect>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Grid.Column="1" Padding="20">
+                                <Grid VerticalAlignment="Center">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+                                        <StackPanel Margin="0,0,30,0">
+                                            <TextBlock Text="СЕТЬ" Foreground="#888" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock x:Name="lblCurrentSpeed" Text="127,4 Мбит/с" Foreground="White" FontSize="18"/>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Text="МАКС. СКОР." Foreground="#888" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock x:Name="lblMaxSpeed" Text="181,5 Мбит/с" Foreground="White" FontSize="18"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1">
+                                        <ProgressBar Height="10" Value="70" Background="#22FFFFFF" Foreground="#2ECC71" BorderThickness="0">
+                                            <ProgressBar.Template>
+                                                <ControlTemplate TargetType="ProgressBar">
+                                                    <Grid>
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="5"/>
+                                                        <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="5" HorizontalAlignment="Left"/>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </ProgressBar.Template>
+                                        </ProgressBar>
+                                        <Grid Margin="0,8,0,0">
+                                            <TextBlock x:Name="lblDownloadedAmount" Text="23,8 ГБ / 33,8 ГБ" Foreground="#AAA" FontSize="11"/>
+                                            <TextBlock x:Name="lblETA" Text="Осталось примерно: 21:22" Foreground="#AAA" FontSize="11" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                                        <Button x:Name="btnSettings" Width="40" Height="40" Background="#22FFFFFF" Margin="0,0,10,0" Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="20">
+                                                        <Path Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.97 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.97 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.95C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.95L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" 
+                                                  Fill="White" Stretch="Uniform" Width="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+
+                                        <Button x:Name="btnPauseResume" Width="40" Height="40" Background="#2ECC71" Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="20">
+                                                        <Path Data="M14,19H18V5H14M6,19H10V5H6V19Z" Fill="White" Stretch="Uniform" Width="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1" Margin="10,0,10,10" Background="Transparent">
+                        <TextBlock Text="Очередь загрузок появится здесь..." 
+                       VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#44FFFFFF" FontSize="16"/>
+                    </Border>
                 </Grid>
             </TabItem>
         </TabControl>
