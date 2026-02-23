@@ -4,8 +4,11 @@ using Playnite.SDK;
 using Playnite.SDK.Models;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,15 +19,42 @@ using System.Windows.Media;
 
 namespace HydraTorrent.Views
 {
-    public partial class HydraHubView : UserControl
+    public partial class HydraHubView : UserControl, INotifyPropertyChanged
     {
         private readonly IPlayniteAPI PlayniteApi;
         private readonly HydraTorrent _plugin;
         private readonly ScraperService _scraperService;
 
-        private List<TorrentResult> _allResults = new List<TorrentResult>();
+        private List<TorrentResult> _allResults = new List<TorrentResult>(); // Хранит ВСЕ результаты последнего поиска
+        private List<TorrentResult> _filteredResults = new List<TorrentResult>(); // Хранит результаты с учетом фильтров
         private int _currentPage = 1;
         private const int _itemsPerPage = 10;
+
+        // --- Свойства для фильтров ---
+        public ObservableCollection<SourceFilterItem> FilterSources { get; set; } = new ObservableCollection<SourceFilterItem>();
+
+        private bool _isAllSourcesSelected = true;
+        public bool IsAllSourcesSelected
+        {
+            get => _isAllSourcesSelected;
+            set
+            {
+                if (_isAllSourcesSelected != value)
+                {
+                    _isAllSourcesSelected = value;
+                    OnPropertyChanged();
+                    UpdateSourceButtonText();
+                    ApplyLocalFilters(); // Мгновенно применяем при изменении "Все источники"
+                }
+            }
+        }
+
+        private string _sourceButtonText = "Все источники";
+        public string SourceButtonText
+        {
+            get => _sourceButtonText;
+            set { _sourceButtonText = value; OnPropertyChanged(); }
+        }
 
         public HydraHubView(IPlayniteAPI api, HydraTorrent plugin)
         {
@@ -32,6 +62,69 @@ namespace HydraTorrent.Views
             PlayniteApi = api;
             _plugin = plugin;
             _scraperService = plugin.GetScraperService();
+
+            // Инициализируем источники из настроек
+            var settings = _plugin.GetSettings().Settings;
+            if (settings.Sources != null)
+            {
+                foreach (var source in settings.Sources)
+                {
+                    var item = new SourceFilterItem { Name = source.Name, IsSelected = true };
+                    item.PropertyChanged += (s, e) =>
+                    {
+                        if (e.PropertyName == nameof(SourceFilterItem.IsSelected))
+                        {
+                            UpdateSourceButtonText();
+                            ApplyLocalFilters(); // Мгновенно применяем при клике на конкретный источник
+                        }
+                    };
+                    FilterSources.Add(item);
+                }
+            }
+
+            this.DataContext = this;
+        }
+
+        // Логика фильтрации уже загруженных данных
+        private void ApplyLocalFilters()
+        {
+            if (_allResults == null || !_allResults.Any()) return;
+
+            if (IsAllSourcesSelected)
+            {
+                _filteredResults = _allResults;
+            }
+            else
+            {
+                var activeSources = FilterSources.Where(x => x.IsSelected).Select(x => x.Name).ToList();
+                _filteredResults = _allResults.Where(r => activeSources.Contains(r.Source)).ToList();
+            }
+
+            // После фильтрации возвращаемся на первую страницу
+            ShowPage(1);
+        }
+
+        private void UpdateSourceButtonText()
+        {
+            if (IsAllSourcesSelected)
+            {
+                SourceButtonText = "Все источники";
+                return;
+            }
+
+            var selected = FilterSources.Where(x => x.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                SourceButtonText = "Не выбрано";
+            }
+            else if (selected.Count == 1)
+            {
+                SourceButtonText = selected[0].Name;
+            }
+            else
+            {
+                SourceButtonText = $"{selected[0].Name} + {selected.Count - 1}";
+            }
         }
 
         private void BtnBack_Click(object sender, RoutedEventArgs e)
@@ -73,21 +166,6 @@ namespace HydraTorrent.Views
             }
         }
 
-        private void BtnDeleteHistory_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.Tag is string queryToRemove)
-            {
-                var settings = _plugin.GetSettings().Settings;
-                if (settings.SearchHistory.Contains(queryToRemove))
-                {
-                    settings.SearchHistory.Remove(queryToRemove);
-                    _plugin.SavePluginSettings(settings);
-                    TxtSearch_TextChanged(null, null);
-                }
-            }
-            e.Handled = true;
-        }
-
         private async void BtnSearch_Click(object sender, RoutedEventArgs e)
         {
             await PerformSearch();
@@ -125,19 +203,25 @@ namespace HydraTorrent.Views
             txtStatus.Text = $"🔎 Ищем «{query}»...";
             lstResults.ItemsSource = null;
             btnSearch.IsEnabled = false;
-            _currentPage = 1;
+            pnlPagination.Children.Clear();
 
             try
             {
-                _allResults = await _scraperService.SearchAsync(query);
-                if (_allResults == null || _allResults.Count == 0)
+                // Загружаем данные из сети
+                var results = await _scraperService.SearchAsync(query);
+
+                // Сохраняем "сырой" результат поиска в кэш
+                _allResults = results ?? new List<TorrentResult>();
+
+                if (_allResults.Count == 0)
                 {
                     txtStatus.Text = "Ничего не найдено 😔";
-                    pnlPagination.Children.Clear();
+                    _filteredResults = new List<TorrentResult>();
                 }
                 else
                 {
-                    ShowPage(1);
+                    // Применяем фильтры к полученным данным
+                    ApplyLocalFilters();
                 }
             }
             catch (Exception ex)
@@ -152,11 +236,20 @@ namespace HydraTorrent.Views
 
         private void ShowPage(int pageNumber)
         {
+            if (_filteredResults == null || _filteredResults.Count == 0)
+            {
+                lstResults.ItemsSource = null;
+                pnlPagination.Children.Clear();
+                txtStatus.Text = "Нет результатов для выбранных фильтров";
+                return;
+            }
+
             _currentPage = pageNumber;
-            var pageData = _allResults.Skip((_currentPage - 1) * _itemsPerPage).Take(_itemsPerPage).ToList();
+            var pageData = _filteredResults.Skip((_currentPage - 1) * _itemsPerPage).Take(_itemsPerPage).ToList();
             lstResults.ItemsSource = pageData;
-            int totalPages = (int)Math.Ceiling((double)_allResults.Count / _itemsPerPage);
-            txtStatus.Text = $"Найдено: {_allResults.Count} (Страница {_currentPage} из {totalPages})";
+
+            int totalPages = (int)Math.Ceiling((double)_filteredResults.Count / _itemsPerPage);
+            txtStatus.Text = $"Найдено: {_filteredResults.Count} (Страница {_currentPage} из {totalPages})";
             UpdatePaginationButtons(totalPages);
         }
 
@@ -166,7 +259,14 @@ namespace HydraTorrent.Views
             if (totalPages <= 1) return;
             for (int i = 1; i <= totalPages; i++)
             {
-                var btn = new Button { Content = $" {i} ", Tag = i, Margin = new Thickness(3, 0, 3, 0), Cursor = Cursors.Hand, Background = (i == _currentPage) ? Brushes.SkyBlue : Brushes.Transparent };
+                var btn = new Button
+                {
+                    Content = $" {i} ",
+                    Tag = i,
+                    Margin = new Thickness(3, 0, 3, 0),
+                    Cursor = Cursors.Hand,
+                    Background = (i == _currentPage) ? Brushes.SkyBlue : Brushes.Transparent
+                };
                 btn.Click += (s, e) => { if (s is Button b && b.Tag is int p) ShowPage(p); };
                 pnlPagination.Children.Add(btn);
             }
@@ -211,9 +311,37 @@ namespace HydraTorrent.Views
             name = Regex.Replace(name, @"(?i)(repack|crack|update|dlc|edition|fitgirl|xatab|mechanics)", "");
             return Regex.Replace(name, @"\s+", " ").Trim('-', '.', ' ');
         }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
     }
 
-    // КОНВЕРТЕР ДЛЯ ПРОЦЕНТНОЙ ШИРИНЫ КОЛОНОК
+    public class SourceFilterItem : INotifyPropertyChanged
+    {
+        private bool _isSelected;
+        public string Name { get; set; }
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set { _isSelected = value; OnPropertyChanged(); }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
+    public class InverseBoolConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => !(bool)value;
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => !(bool)value;
+    }
+
     public class ColumnWidthConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -222,12 +350,11 @@ namespace HydraTorrent.Views
             {
                 if (double.TryParse(multiplierStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double multiplier))
                 {
-                    // Вычитаем 30 пикселей на возможный ScrollBar, чтобы не было дерганий
                     double finalWidth = (actualWidth - 30) * multiplier;
                     return finalWidth < 0 ? 0 : finalWidth;
                 }
             }
-            return 100; // Дефолт
+            return 100;
         }
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
     }
