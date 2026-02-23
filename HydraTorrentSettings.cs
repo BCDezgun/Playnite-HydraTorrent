@@ -38,6 +38,9 @@ namespace HydraTorrent
         // ==================== ИСТОЧНИКИ ====================
         // Пустой список по умолчанию — пользователь сам добавляет всё, что хочет
         public List<SourceEntry> Sources { get; set; } = new List<SourceEntry>();
+
+        // =================== ХЭШ ПОИСКА ====================
+        public List<string> SearchHistory { get; set; } = new List<string>();
     }
 
     // ViewModel (без изменений)

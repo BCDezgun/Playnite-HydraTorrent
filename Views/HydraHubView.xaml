@@ -1,114 +1,48 @@
 ﻿<UserControl x:Class="HydraTorrent.Views.HydraHubView" 
-              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
-              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
-              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1200">
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:HydraTorrent.Views"
+             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1200">
+
+    <UserControl.Resources>
+        <local:ColumnWidthConverter x:Key="ColumnWidthConverter" />
+    </UserControl.Resources>
 
     <DockPanel LastChildFill="True">
-
         <Border DockPanel.Dock="Top" Background="Transparent" Height="52" BorderThickness="0,0,0,1">
             <Border.BorderBrush>
                 <SolidColorBrush Color="Gray" Opacity="0.2"/>
             </Border.BorderBrush>
             <DockPanel>
-                <Button x:Name="btnBack" 
-                         Width="48" 
-                         Height="48" 
-                         Margin="8,0,0,0" 
-                         Click="BtnBack_Click" 
-                         Background="Transparent" 
-                         BorderThickness="0" 
-                         Cursor="Hand" 
-                         VerticalAlignment="Center">
+                <Button x:Name="btnBack" Width="48" Height="48" Margin="8,0,0,0" Click="BtnBack_Click" Background="Transparent" BorderThickness="0" Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Grid Background="Transparent">
-                                <Path x:Name="ArrowPath" 
-                                       Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" 
-                                       Fill="#CCCCCC" 
-                                       Stretch="Uniform" 
-                                       Width="20" 
-                                       Height="20" 
-                                       HorizontalAlignment="Center" 
-                                       VerticalAlignment="Center" 
-                                       RenderTransformOrigin="0.5,0.5">
-                                    <Path.RenderTransform>
-                                        <ScaleTransform ScaleX="1" ScaleY="1"/>
-                                    </Path.RenderTransform>
-                                </Path>
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="ArrowPath" Property="Fill" Value="White"/>
-                                    <Setter TargetName="ArrowPath" Property="RenderTransform">
-                                        <Setter.Value>
-                                            <ScaleTransform ScaleX="1.2" ScaleY="1.2"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="ArrowPath" Property="Opacity" Value="0.7"/>
-                                    <Setter TargetName="ArrowPath" Property="RenderTransform">
-                                        <Setter.Value>
-                                            <ScaleTransform ScaleX="1.1" ScaleY="1.1"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
+                            <Path Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Fill="#CCCCCC" Stretch="Uniform" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
-                <TextBlock Text="Hydra Hub" 
-                            Margin="12,0,0,0" 
-                            VerticalAlignment="Center" 
-                            FontSize="22" 
-                            FontWeight="SemiBold" 
-                            Foreground="White"/>
+                <TextBlock Text="Hydra Hub" Margin="12,0,0,0" VerticalAlignment="Center" FontSize="22" FontWeight="SemiBold" Foreground="White"/>
             </DockPanel>
         </Border>
 
-        <TabControl x:Name="MainTabControl" 
-                     TabStripPlacement="Top" 
-                     Margin="0,8,0,0" 
-                     Background="Transparent" 
-                     BorderThickness="0">
-
+        <TabControl x:Name="MainTabControl" Margin="0,8,0,0" Background="Transparent" BorderThickness="0">
             <TabItem Header="🔍 Поиск репаков">
                 <Grid Margin="15">
-
                     <Grid Margin="0,0,0,15" Height="40" VerticalAlignment="Top">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-
-                        <TextBox x:Name="txtSearch" 
-                                  Grid.Column="0"
-                                  Height="40" 
-                                  FontSize="18" 
-                                  Padding="15,0" 
-                                  Background="Transparent" 
-                                  Foreground="White" 
-                                  BorderBrush="White" 
-                                  BorderThickness="1"
-                                  VerticalContentAlignment="Center"
-                                  KeyDown="TxtSearch_KeyDown">
+                        <TextBox x:Name="txtSearch" Height="40" FontSize="18" Padding="15,0" Background="Transparent" Foreground="White" BorderBrush="White" BorderThickness="1" VerticalContentAlignment="Center" KeyDown="TxtSearch_KeyDown" TextChanged="TxtSearch_TextChanged">
                             <TextBox.Resources>
                                 <Style TargetType="{x:Type Border}">
                                     <Setter Property="CornerRadius" Value="20"/>
                                 </Style>
                             </TextBox.Resources>
                         </TextBox>
-
-                        <Button x:Name="btnSearch" 
-                                 Grid.Column="1"
-                                 Content="Искать" 
-                                 Height="40" 
-                                 Width="120" 
-                                 Margin="10,0,0,0"
-                                 Click="BtnSearch_Click" 
-                                 FontSize="16">
+                        <Button x:Name="btnSearch" Grid.Column="1" Content="Искать" Height="40" Width="120" Margin="10,0,0,0" Click="BtnSearch_Click" FontSize="16">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border Background="#2ECC71" CornerRadius="20">
@@ -117,44 +51,62 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
+
+                        <Popup x:Name="HistoryPopup" PlacementTarget="{Binding ElementName=txtSearch}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+                            <Border Background="#E61E1E1E" BorderBrush="#44FFFFFF" BorderThickness="1" CornerRadius="12" Width="{Binding ElementName=txtSearch, Path=ActualWidth}">
+                                <ListBox x:Name="lstHistory" Background="Transparent" BorderThickness="0" Foreground="White" SelectionChanged="LstHistory_SelectionChanged">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="10,5"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Popup>
                     </Grid>
 
-                    <ListView x:Name="lstResults" 
-                               Margin="0,55,0,70" 
-                               Background="#2D2D2D" 
-                               Foreground="White" 
-                               SelectionMode="Single" 
-                               MouseDoubleClick="LstResults_MouseDoubleClick">
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="Название" Width="500" DisplayMemberBinding="{Binding Name}"/>
-                                <GridViewColumn Header="Размер" Width="100" DisplayMemberBinding="{Binding Size}"/>
-                                <GridViewColumn Header="Источник" Width="150" DisplayMemberBinding="{Binding Source}"/>
-                                <GridViewColumn Header="Год" Width="80" DisplayMemberBinding="{Binding Year}"/>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
+                    <Grid Margin="0,55,0,70">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.8*"/>
+                            <ColumnDefinition Width="0.2*"/>
+                        </Grid.ColumnDefinitions>
 
-                    <StackPanel x:Name="pnlPagination" 
-                                 Orientation="Horizontal" 
-                                 HorizontalAlignment="Center" 
-                                 VerticalAlignment="Bottom" 
-                                 Margin="0,0,0,30"/>
+                        <ListView x:Name="lstResults" 
+                                  Grid.Column="0"
+                                  Background="#2D2D2D" Foreground="White" 
+                                  BorderThickness="0" MouseDoubleClick="LstResults_MouseDoubleClick">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Название" 
+                                        Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.72}">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
 
-                    <TextBlock x:Name="txtStatus" 
-                                Text="Введите название игры и нажмите Искать или Enter" 
-                                VerticalAlignment="Bottom" 
-                                HorizontalAlignment="Center" 
-                                Foreground="#888"/>
+                                    <GridViewColumn Header="Размер" DisplayMemberBinding="{Binding Size}"
+                                        Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.10}"/>
+
+                                    <GridViewColumn Header="Источник" DisplayMemberBinding="{Binding Source}"
+                                        Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.125}"/>
+
+                                    <GridViewColumn Header="Год" DisplayMemberBinding="{Binding Year}"
+                                        Width="{Binding ElementName=lstResults, Path=ActualWidth, Converter={StaticResource ColumnWidthConverter}, ConverterParameter=0.05}"/>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </Grid>
+
+                    <StackPanel x:Name="pnlPagination" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,30"/>
+                    <TextBlock x:Name="txtStatus" Text="Введите название игры и нажмите Искать" VerticalAlignment="Bottom" HorizontalAlignment="Center" Foreground="#888"/>
                 </Grid>
             </TabItem>
 
             <TabItem Header="📥 Менеджер загрузок">
                 <Grid Background="Transparent">
-                    <TextBlock Text="Менеджер загрузок будет здесь (следующий шаг)" 
-                                HorizontalAlignment="Center" 
-                                VerticalAlignment="Center" 
-                                FontSize="18" Foreground="#888"/>
+                    <TextBlock Text="Менеджер загрузок будет здесь" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#888"/>
                 </Grid>
             </TabItem>
         </TabControl>

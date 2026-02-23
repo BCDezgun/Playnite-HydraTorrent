@@ -4,11 +4,13 @@ using Playnite.SDK;
 using Playnite.SDK.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -18,7 +20,6 @@ namespace HydraTorrent.Views
     {
         private readonly IPlayniteAPI PlayniteApi;
         private readonly HydraTorrent _plugin;
-        // УБИРАЕМ создание нового сервиса здесь!
         private readonly ScraperService _scraperService;
 
         private List<TorrentResult> _allResults = new List<TorrentResult>();
@@ -30,19 +31,63 @@ namespace HydraTorrent.Views
             InitializeComponent();
             PlayniteApi = api;
             _plugin = plugin;
-
-            // ПОЛУЧАЕМ сервис из плагина (который мы создали в HydraTorrent.cs)
-            // Для этого в HydraTorrent.cs добавь публичное поле или свойство для _scraperService
             _scraperService = plugin.GetScraperService();
         }
 
-        // ==================== КНОПКА НАЗАД ====================
         private void BtnBack_Click(object sender, RoutedEventArgs e)
         {
             PlayniteApi.MainView.SwitchToLibraryView();
         }
 
-        // ==================== ПОИСК ====================
+        private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var query = txtSearch.Text.ToLower().Trim();
+            var history = _plugin.GetSettings().Settings.SearchHistory;
+
+            if (string.IsNullOrEmpty(query) || history == null || history.Count == 0)
+            {
+                HistoryPopup.IsOpen = false;
+                return;
+            }
+
+            var filtered = history.Where(h => h.ToLower().Contains(query)).Take(5).ToList();
+
+            if (filtered.Any())
+            {
+                lstHistory.ItemsSource = filtered;
+                HistoryPopup.IsOpen = true;
+            }
+            else
+            {
+                HistoryPopup.IsOpen = false;
+            }
+        }
+
+        private void LstHistory_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (lstHistory.SelectedItem is string selectedQuery)
+            {
+                txtSearch.Text = selectedQuery;
+                HistoryPopup.IsOpen = false;
+                _ = PerformSearch();
+            }
+        }
+
+        private void BtnDeleteHistory_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string queryToRemove)
+            {
+                var settings = _plugin.GetSettings().Settings;
+                if (settings.SearchHistory.Contains(queryToRemove))
+                {
+                    settings.SearchHistory.Remove(queryToRemove);
+                    _plugin.SavePluginSettings(settings);
+                    TxtSearch_TextChanged(null, null);
+                }
+            }
+            e.Handled = true;
+        }
+
         private async void BtnSearch_Click(object sender, RoutedEventArgs e)
         {
             await PerformSearch();
@@ -63,12 +108,18 @@ namespace HydraTorrent.Views
                 return;
             }
 
-            // ПРОВЕРКА: Если источников нет, сразу предупреждаем
             var settings = _plugin.GetSettings().Settings;
             if (settings.Sources == null || settings.Sources.Count == 0)
             {
-                txtStatus.Text = "⚠️ Источники не настроены! Добавьте их в настройках плагина.";
+                txtStatus.Text = "⚠️ Источники не настроены!";
                 return;
+            }
+
+            if (!settings.SearchHistory.Contains(query, StringComparer.OrdinalIgnoreCase))
+            {
+                settings.SearchHistory.Insert(0, query);
+                if (settings.SearchHistory.Count > 20) settings.SearchHistory.RemoveAt(20);
+                _plugin.SavePluginSettings(settings);
             }
 
             txtStatus.Text = $"🔎 Ищем «{query}»...";
@@ -78,9 +129,7 @@ namespace HydraTorrent.Views
 
             try
             {
-                // Используем правильный сервис
                 _allResults = await _scraperService.SearchAsync(query);
-
                 if (_allResults == null || _allResults.Count == 0)
                 {
                     txtStatus.Text = "Ничего не найдено 😔";
@@ -94,7 +143,6 @@ namespace HydraTorrent.Views
             catch (Exception ex)
             {
                 txtStatus.Text = $"Ошибка: {ex.Message}";
-                HydraTorrent.logger.Error(ex, "Search failed in Hub");
             }
             finally
             {
@@ -105,16 +153,10 @@ namespace HydraTorrent.Views
         private void ShowPage(int pageNumber)
         {
             _currentPage = pageNumber;
-            var pageData = _allResults
-                .Skip((_currentPage - 1) * _itemsPerPage)
-                .Take(_itemsPerPage)
-                .ToList();
-
+            var pageData = _allResults.Skip((_currentPage - 1) * _itemsPerPage).Take(_itemsPerPage).ToList();
             lstResults.ItemsSource = pageData;
-
             int totalPages = (int)Math.Ceiling((double)_allResults.Count / _itemsPerPage);
             txtStatus.Text = $"Найдено: {_allResults.Count} (Страница {_currentPage} из {totalPages})";
-
             UpdatePaginationButtons(totalPages);
         }
 
@@ -122,26 +164,10 @@ namespace HydraTorrent.Views
         {
             pnlPagination.Children.Clear();
             if (totalPages <= 1) return;
-
             for (int i = 1; i <= totalPages; i++)
             {
-                var btn = new Button
-                {
-                    Content = $" {i} ",
-                    Tag = i,
-                    Margin = new Thickness(3, 0, 3, 0),
-                    Padding = new Thickness(5),
-                    Cursor = Cursors.Hand,
-                    Background = (i == _currentPage) ? Brushes.SkyBlue : Brushes.Transparent,
-                    BorderBrush = Brushes.Gray
-                };
-
-                btn.Click += (s, e) =>
-                {
-                    if (s is Button b && b.Tag is int p)
-                        ShowPage(p);
-                };
-
+                var btn = new Button { Content = $" {i} ", Tag = i, Margin = new Thickness(3, 0, 3, 0), Cursor = Cursors.Hand, Background = (i == _currentPage) ? Brushes.SkyBlue : Brushes.Transparent };
+                btn.Click += (s, e) => { if (s is Button b && b.Tag is int p) ShowPage(p); };
                 pnlPagination.Children.Add(btn);
             }
         }
@@ -150,79 +176,30 @@ namespace HydraTorrent.Views
         {
             if (lstResults.SelectedItem is TorrentResult result)
             {
-                // 1. ПРОВЕРКА: А вдруг такая игра уже есть?
-                var existingGame = PlayniteApi.Database.Games.FirstOrDefault(g =>
-                    g.Name.Equals(result.Name, StringComparison.OrdinalIgnoreCase));
-
+                var existingGame = PlayniteApi.Database.Games.FirstOrDefault(g => g.Name.Equals(result.Name, StringComparison.OrdinalIgnoreCase));
                 if (existingGame != null)
                 {
-                    var res = PlayniteApi.Dialogs.ShowMessage(
-                        $"Игра с похожим названием уже есть в библиотеке ({existingGame.Name}). Всё равно добавить новую версию?",
-                        "Внимание", MessageBoxButton.YesNo);
-                    if (res == MessageBoxResult.No) return;
+                    if (PlayniteApi.Dialogs.ShowMessage($"Игра «{existingGame.Name}» уже есть. Добавить еще раз?", "Внимание", MessageBoxButton.YesNo) == MessageBoxResult.No) return;
                 }
 
-                var confirm = MessageBox.Show(
-                    $"Добавить игру «{result.Name}» в библиотеку Playnite?",
-                    "Подтверждение",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (confirm != MessageBoxResult.Yes) return;
-
                 string suggestedName = CleanGameName(result.Name);
-                var dialogResult = PlayniteApi.Dialogs.SelectString(
-                    "Отредактируйте название игры для корректного поиска метаданных:",
-                    "Название игры",
-                    suggestedName);
-
+                var dialogResult = PlayniteApi.Dialogs.SelectString("Отредактируйте название:", "Название игры", suggestedName);
                 if (!dialogResult.Result) return;
 
                 string finalName = dialogResult.SelectedString?.Trim();
                 if (string.IsNullOrEmpty(finalName)) return;
 
-                try
+                var metadata = new GameMetadata { Name = finalName, Source = new MetadataNameProperty("Hydra Torrent"), IsInstalled = false };
+                var importedGame = PlayniteApi.Database.ImportGame(metadata);
+
+                if (importedGame != null)
                 {
-                    var metadata = new GameMetadata
-                    {
-                        Name = finalName,
-                        Source = new MetadataNameProperty("Hydra Torrent"),
-                        IsInstalled = false
-                        // PluginId здесь НЕ НУЖЕН и вызывает ошибку
-                    };
-
-                    // Импортируем игру в базу данных
-                    var importedGame = PlayniteApi.Database.ImportGame(metadata);
-
-                    if (importedGame != null)
-                    {
-                        // А вот здесь мы уже работаем с реальным объектом Game из базы
-                        // и назначаем ему ID нашего плагина
-                        importedGame.PluginId = _plugin.Id;
-
-                        importedGame.Notes = $"Источник: {result.Source}\n" +
-                                             $"Оригинальное название: {result.Name}\n" +
-                                             $"Magnet: {result.Magnet}";
-
-                        // Добавляем тег
-                        var tag = PlayniteApi.Database.Tags.Add("Hydra Torrent");
-                        if (importedGame.TagIds == null) importedGame.TagIds = new List<Guid>();
-                        if (!importedGame.TagIds.Contains(tag.Id)) importedGame.TagIds.Add(tag.Id);
-
-                        // Сохраняем данные для торрента
-                        _plugin.SaveHydraData(importedGame, result);
-
-                        // Обновляем игру в базе, чтобы сохранить PluginId, Notes и Tags
-                        PlayniteApi.Database.Games.Update(importedGame);
-
-                        PlayniteApi.MainView.SelectGame(importedGame.Id);
-
-                        txtStatus.Text = $"✅ «{finalName}» добавлена!";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    PlayniteApi.Dialogs.ShowErrorMessage(ex.Message, "Ошибка добавления");
+                    importedGame.PluginId = _plugin.Id;
+                    importedGame.Notes = $"Источник: {result.Source}\nMagnet: {result.Magnet}";
+                    PlayniteApi.Database.Games.Update(importedGame);
+                    _plugin.SaveHydraData(importedGame, result);
+                    PlayniteApi.MainView.SelectGame(importedGame.Id);
+                    txtStatus.Text = $"✅ «{finalName}» добавлена!";
                 }
             }
         }
@@ -230,13 +207,28 @@ namespace HydraTorrent.Views
         private string CleanGameName(string rawName)
         {
             if (string.IsNullOrEmpty(rawName)) return rawName;
-            string name = rawName.Trim();
-            name = Regex.Replace(name, @"\[.*?\]", "");
-            name = Regex.Replace(name, @"\(.*?\)", "");
-            name = Regex.Replace(name, @"v\.?\d+(\.\d+)*", "", RegexOptions.IgnoreCase);
-            name = Regex.Replace(name, @"(repack|crack|fixed|update|dlc|multi|ultimate|deluxe|edition|goty|complete|reloaded|codex|empress|flt|skidrow|fitgirl|xatab|by xatab|rg mechanics|decepticon)", "", RegexOptions.IgnoreCase);
-            name = Regex.Replace(name, @"\s+", " ").Trim();
-            return name.Trim('-', '.', ' ');
+            string name = Regex.Replace(rawName, @"\[.*?\]|\(.*?\)|v\.?\d+(\.\d+)*", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"(?i)(repack|crack|update|dlc|edition|fitgirl|xatab|mechanics)", "");
+            return Regex.Replace(name, @"\s+", " ").Trim('-', '.', ' ');
         }
+    }
+
+    // КОНВЕРТЕР ДЛЯ ПРОЦЕНТНОЙ ШИРИНЫ КОЛОНОК
+    public class ColumnWidthConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is double actualWidth && parameter is string multiplierStr)
+            {
+                if (double.TryParse(multiplierStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double multiplier))
+                {
+                    // Вычитаем 30 пикселей на возможный ScrollBar, чтобы не было дерганий
+                    double finalWidth = (actualWidth - 30) * multiplier;
+                    return finalWidth < 0 ? 0 : finalWidth;
+                }
+            }
+            return 100; // Дефолт
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
     }
 }
