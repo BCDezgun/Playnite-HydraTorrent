@@ -126,6 +126,7 @@ namespace HydraTorrent.Views
         {
             Dispatcher.Invoke(() =>
             {
+                UpdateGameBackground(game);
                 if (status == null) return;
 
                 if (txtCurrentGameName != null)
@@ -159,6 +160,79 @@ namespace HydraTorrent.Views
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[Hydra] UI Updated: {uiProgress:F1}%");
+            });
+        }
+        private void UpdateGameBackground(Game game)
+        {
+            if (imgGameBackground == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[Hydra] imgGameBackground is null");
+                return;
+            }
+
+            Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    string imageFileName = null;
+
+                    // 1. Фон (приоритет)
+                    if (!string.IsNullOrEmpty(game.BackgroundImage))
+                    {
+                        imageFileName = game.BackgroundImage;
+                        System.Diagnostics.Debug.WriteLine($"[Hydra] Using BackgroundImage: {imageFileName}");
+                    }
+                    // 2. Обложка как запасной вариант
+                    else if (!string.IsNullOrEmpty(game.CoverImage))
+                    {
+                        imageFileName = game.CoverImage;
+                        System.Diagnostics.Debug.WriteLine($"[Hydra] Using CoverImage: {imageFileName}");
+                    }
+
+                    if (string.IsNullOrEmpty(imageFileName))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[Hydra] No image filename in game metadata");
+                        imgGameBackground.Source = null;
+                        return;
+                    }
+
+                    // Базовая папка библиотеки Playnite
+                    string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                    string libraryFilesDir = System.IO.Path.Combine(appData, "Playnite", "library", "files");
+
+                    // Полный путь к папке игры
+                    string gameFolder = System.IO.Path.Combine(libraryFilesDir, game.Id.ToString());
+
+                    // Полный путь к файлу изображения
+                    string fullImagePath = System.IO.Path.Combine(gameFolder, imageFileName);
+
+                    // Если имя содержит подпапку (GUID\filename.jpg) — Playnite иногда так хранит
+                    if (imageFileName.Contains("\\"))
+                    {
+                        fullImagePath = System.IO.Path.Combine(libraryFilesDir, imageFileName);
+                    }
+
+                    if (System.IO.File.Exists(fullImagePath))
+                    {
+                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.UriSource = new Uri(fullImagePath, UriKind.Absolute);
+                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                        bitmap.EndInit();
+                        imgGameBackground.Source = bitmap;
+                        System.Diagnostics.Debug.WriteLine($"[Hydra] Image loaded: {fullImagePath}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Hydra] Image file not found: {fullImagePath}");
+                        imgGameBackground.Source = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Hydra] Failed to load image: {ex.Message}");
+                    imgGameBackground.Source = null;
+                }
             });
         }
         private string FormatSpeed(long bytesPerSecond)
