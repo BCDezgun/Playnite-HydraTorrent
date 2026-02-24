@@ -83,6 +83,18 @@
 
 **Лицензия**: MIT
 
+### ⚠️ Отказ от ответственности
+
+Этот плагин является **техническим инструментом** для управления загрузками торрентов в Playnite.
+Он не размещает, не распространяет и не предоставляет какой-либо контент, защищенный авторским правом.
+
+Пользователи несут ответственность за:
+- Наличие у них законных прав на загрузку любого контента
+- Соблюдение местных законов об авторском праве
+- Использование этого плагина только с легально полученными торрентами
+
+### Разработчик не несет ответственности за любое неправомерное использование этого плагина.
+
 ### English version
 # HydraTorrent for Playnite
 
@@ -159,4 +171,16 @@ You're all set! Just click **Hydra Hub** in the sidebar and start searching.
 
 ### Developers
 
-* **Lead Developer**: BCDezgun
+* **Lead Developer**: BCDezgun, Grok (xAI), Gemini (GoogleAI)
+
+### ⚠️ Disclaimer
+
+This plugin is a **technical tool** for managing torrent downloads within Playnite. 
+It does not host, distribute, or provide any copyrighted content.
+
+Users are responsible for:
+- Ensuring they have legal rights to download any content
+- Complying with their local copyright laws
+- Using this plugin only with legally obtained torrents
+
+### The developer is not responsible for any misuse of this plugin.
