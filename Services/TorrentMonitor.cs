@@ -1,4 +1,5 @@
 ﻿using HydraTorrent.Views;
+using Newtonsoft.Json.Linq;
 using Playnite.SDK;
 using Playnite.SDK.Models;
 using QBittorrent.Client;
@@ -78,7 +79,6 @@ namespace HydraTorrent.Services
             {
                 var torrents = await _client.GetTorrentListAsync();
 
-                // Получаем все игры плагина один раз
                 var hydraGames = _api.Database.Games
                     .Where(g => g.PluginId == _plugin.Id)
                     .ToList();
@@ -93,10 +93,121 @@ namespace HydraTorrent.Services
                         UpdateGameProgress(targetGame, torrent);
                     }
                 }
+
+                // ✅ Управление очередью (каждые 3 секунды)
+                await ManageQueueAsync();
+
+                // ✅ Проверка завершённых
+                await CheckCompletedDownloadsAsync();
             }
             catch (Exception ex)
             {
                 HydraTorrent.logger.Error(ex, "Error during torrent monitoring tick.");
+            }
+        }
+
+        private async Task ManageQueueAsync()
+        {
+            try
+            {
+                var queue = _plugin.DownloadQueue;
+                if (queue == null || !queue.Any()) return;
+
+                // ✅ Ищем игру с позицией 0 (приоритет по позиции, не по статусу!)
+                var priorityDownload = queue
+                    .Where(q => q.QueuePosition == 0 && q.QueueStatus == "Downloading")
+                    .FirstOrDefault();
+
+                // ✅ Если нет с позицией 0, ищем любую "Downloading"
+                if (priorityDownload == null)
+                {
+                    priorityDownload = queue.FirstOrDefault(q => q.QueueStatus == "Downloading");
+                }
+
+                var allTorrents = await _client.GetTorrentListAsync();
+
+                foreach (var item in queue)
+                {
+                    if (string.IsNullOrEmpty(item.TorrentHash)) continue;
+
+                    var torrent = allTorrents.FirstOrDefault(t =>
+                        t.Hash.Equals(item.TorrentHash, StringComparison.OrdinalIgnoreCase));
+
+                    if (torrent == null) continue;
+
+                    if (item == priorityDownload)
+                    {
+                        // Приоритетная загрузка — должна работать
+                        if (torrent.State.ToString().Contains("Paused"))
+                        {
+                            await _client.ResumeAsync(item.TorrentHash);
+                        }
+                    }
+                    else if (item.QueueStatus == "Queued" || item.QueueStatus == "Paused")
+                    {
+                        // Очередь ИЛИ ручная пауза — должна быть на паузе
+                        if (!torrent.State.ToString().Contains("Paused") &&
+                            !torrent.State.ToString().Contains("Complete"))
+                        {
+                            await _client.PauseAsync(item.TorrentHash);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Error(ex, "Ошибка управления очередью");
+            }
+        }
+
+        private async Task CheckCompletedDownloadsAsync()
+        {
+            try
+            {
+                var queue = _plugin.DownloadQueue;
+                var activeItems = queue.Where(q => q.QueueStatus == "Downloading").ToList();
+                var allTorrents = await _client.GetTorrentListAsync();
+
+                foreach (var item in activeItems)
+                {
+                    if (string.IsNullOrEmpty(item.TorrentHash)) continue;
+
+                    var torrent = allTorrents.FirstOrDefault(t =>
+                        t.Hash.Equals(item.TorrentHash, StringComparison.OrdinalIgnoreCase));
+
+                    if (torrent == null) continue;
+
+                    if (torrent.Progress >= 1.0 && torrent.State.ToString().Contains("Complete"))
+                    {
+                        HydraTorrent.logger.Info($"Загрузка завершена: {item.Name}");
+
+                        item.QueueStatus = "Completed";
+                        _plugin.SaveQueue();
+
+                        if (item.GameId.HasValue)
+                        {
+                            var game = _api.Database.Games.Get(item.GameId.Value);
+                            if (game != null)
+                            {
+                                game.IsInstalled = true;
+                                game.IsInstalling = false;
+                                _api.Database.Games.Update(game);
+                            }
+                        }
+
+                        _api.Notifications.Add(new NotificationMessage(
+                            "HydraTorrent",
+                            $"✅ Загрузка завершена: {item.Name}",
+                            NotificationType.Info));
+
+                        // Запускаем следующую
+                        await _plugin.StartNextInQueueAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Error(ex, "Ошибка проверки завершённых загрузок");
             }
         }
 
@@ -134,10 +245,10 @@ namespace HydraTorrent.Services
             };
 
             // Обновляем UI, если окно открыто
-            if (HydraHubView.CurrentInstance != null)
-            {
-                HydraHubView.CurrentInstance.UpdateDownloadUI(game, HydraTorrent.LiveStatus[game.Id]);
-            }
+            //if (HydraHubView.CurrentInstance != null)
+            //{
+            //    HydraHubView.CurrentInstance.UpdateDownloadUI(game, HydraTorrent.LiveStatus[game.Id]);
+            //}
 
             // Обновляем статус в библиотеке Playnite
             var status = _api.Database.CompletionStatuses

@@ -394,10 +394,222 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="1" Margin="10,0,10,10" Background="Transparent">
-                        <TextBlock Text="Очередь загрузок появится здесь..."
-                                   VerticalAlignment="Center" HorizontalAlignment="Center" 
-                                   Foreground="#44FFFFFF" FontSize="16"/>
+                    <!-- ЗАМЕНИТЬ ЭТОТ БЛОК -->
+                    <Border Grid.Row="1" Margin="10,0,10,10" Background="#1A1A1A" CornerRadius="8">
+                        <Grid>
+                            <!-- Заголовок очереди -->
+                            <TextBlock Text="📦 ОЧЕРЕДЬ ЗАГРУЗОК" 
+                   Foreground="#888" 
+                   FontSize="12" 
+                   FontWeight="Bold" 
+                   Margin="15,10,0,0"
+                   VerticalAlignment="Top"/>
+
+                            <!-- Список очереди -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                      Margin="0,30,0,0">
+                                <ItemsControl x:Name="lstQueue" 
+                          Background="Transparent" 
+                          Foreground="White">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#252525" 
+                                Margin="10,5" 
+                                Padding="15,10" 
+                                CornerRadius="6"
+                                BorderBrush="#333"
+                                BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Информация об игре -->
+                                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" 
+                                               Foreground="White" 
+                                               FontSize="14" 
+                                               FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"/>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                            <TextBlock Text="{Binding Size}" 
+                                                   Foreground="#888" 
+                                                   FontSize="11"/>
+                                                            <TextBlock Text=" • " 
+                                                   Foreground="#888" 
+                                                   FontSize="11" 
+                                                   Margin="5,0"/>
+                                                            <TextBlock Foreground="#888" 
+                                                   FontSize="11">
+                                            <Run Text="Позиция: "/>
+                                            <Run Text="{Binding QueuePosition}" 
+                                                 FontWeight="Bold" 
+                                                 Foreground="#4FC3F7"/>
+                                                            </TextBlock>
+                                                            <TextBlock Text=" • " 
+                                                   Foreground="#888" 
+                                                   FontSize="11" 
+                                                   Margin="5,0"/>
+                                                            <TextBlock Foreground="#888" 
+                                                   FontSize="11">
+                                            <Run Text="Статус: "/>
+                                            <Run Text="{Binding QueueStatus}" 
+                                                 FontWeight="Bold">
+                                                <Run.Style>
+                                                    <Style TargetType="Run">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Downloading">
+                                                                <Setter Property="Foreground" Value="#2ECC71"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Queued">
+                                                                <Setter Property="Foreground" Value="#F39C12"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Paused">
+                                                                <Setter Property="Foreground" Value="#95A5A6"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Completed">
+                                                                <Setter Property="Foreground" Value="#2ECC71"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Run.Style>
+                                            </Run>
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                    <!-- Кнопки управления -->
+                                                    <StackPanel Grid.Column="1" 
+                                            Orientation="Horizontal" 
+                                            VerticalAlignment="Center"
+                                            Margin="10,0,0,0">
+                                                        <!-- Вверх -->
+                                                        <Button x:Name="btnUp" 
+                                            Width="32" 
+                                            Height="32" 
+                                            Margin="0,0,5,0"
+                                            Background="#333"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            ToolTip="Поднять выше"
+                                            Click="BtnQueueUp_Click">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                        <Path Data="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z" 
+                                                          Fill="#AAA" 
+                                                          Stretch="Uniform" 
+                                                          Width="14" 
+                                                          Height="14"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="#444"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
+
+                                                        <!-- Вниз -->
+                                                        <Button x:Name="btnDown" 
+                                            Width="32" 
+                                            Height="32" 
+                                            Margin="0,0,5,0"
+                                            Background="#333"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            ToolTip="Опустить ниже"
+                                            Click="BtnQueueDown_Click">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                        <Path Data="M7.41,8.59L12,13.17L16.59,8.59L18,10L12,16L6,10L7.41,8.59Z" 
+                                                          Fill="#AAA" 
+                                                          Stretch="Uniform" 
+                                                          Width="14" 
+                                                          Height="14"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="#444"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
+
+                                                        <!-- Запустить принудительно -->
+                                                        <Button x:Name="btnForceStart" 
+                                            Width="32" 
+                                            Height="32" 
+                                            Margin="0,0,5,0"
+                                            Background="#2ECC71"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            ToolTip="Запустить эту игру"
+                                            Click="BtnQueueForceStart_Click">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                        <Path Data="M8,5.14V19.14L19,12.14L8,5.14Z" 
+                                                          Fill="White" 
+                                                          Stretch="Uniform" 
+                                                          Width="14" 
+                                                          Height="14"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="#27AE60"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
+
+                                                        <!-- Удалить из очереди -->
+                                                        <Button x:Name="btnRemove" 
+                                            Width="32" 
+                                            Height="32"
+                                            Background="#E74C3C"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            ToolTip="Удалить из очереди"
+                                            Click="BtnQueueRemove_Click">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                        <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" 
+                                                          Fill="White" 
+                                                          Stretch="Uniform" 
+                                                          Width="14" 
+                                                          Height="14"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="#C0392B"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <!-- Плейсхолдер если очередь пуста -->
+                            <TextBlock x:Name="txtQueueEmpty" 
+                   Text="Очередь пуста"
+                   VerticalAlignment="Center" 
+                   HorizontalAlignment="Center" 
+                   Foreground="#44FFFFFF" 
+                   FontSize="14"/>
+                        </Grid>
                     </Border>
                 </Grid>
             </TabItem>
