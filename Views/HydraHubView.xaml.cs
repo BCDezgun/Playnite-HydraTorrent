@@ -147,12 +147,38 @@ namespace HydraTorrent.Views
         {
             Dispatcher.Invoke(() =>
             {
+                // Всегда обновляем фон (даже при очистке)
                 UpdateGameBackground(game);
 
-                if (status == null) return;
+                if (status == null || game == null)
+                {
+                    // Полная очистка UI после удаления или отсутствия загрузки
+                    txtCurrentGameName.Text = "";
+                    lblCurrentSpeed.Text = "0 Мбит/с";
+                    lblMaxSpeed.Text = "0 Мбит/с";
+                    pbDownload.Value = 0;
+                    lblDownloadedAmount.Text = "0 ГБ / 0 ГБ";
+                    lblETA.Text = "Осталось: --:--:--";
 
-                if (txtCurrentGameName != null)
-                    txtCurrentGameName.Text = game?.Name?.ToUpper() ?? "ЗАГРУЗКА...";
+                    if (lblLoadingStatus != null)
+                    {
+                        lblLoadingStatus.Visibility = Visibility.Collapsed;
+                    }
+
+                    // Дополнительно скрываем или сбрасываем кнопки, если нужно
+                    btnPauseResume.Visibility = Visibility.Collapsed;  // или Visibility.Visible, если хочешь оставить
+                    btnSettings.Visibility = Visibility.Collapsed;      // или оставь Visible
+
+                    txtStatus.Text = "Очередь загрузок появится здесь...";
+
+                    // Сбрасываем максимальную скорость (опционально)
+                    _maxSpeedSeen = 0;
+
+                    return;
+                }
+
+                // Обычное обновление при наличии статуса
+                txtCurrentGameName.Text = game.Name?.ToUpper() ?? "ЗАГРУЗКА...";
 
                 long currentSpeedBytes = status.DownloadSpeed;
                 if (currentSpeedBytes > _maxSpeedSeen) _maxSpeedSeen = currentSpeedBytes;
@@ -181,9 +207,29 @@ namespace HydraTorrent.Views
                     lblETA.Text = "Осталось: --:--:--";
                 }
 
+                if (lblLoadingStatus != null)
+                {
+                    lblLoadingStatus.Visibility = Visibility.Visible;
+
+                    if (status.Status.Contains("Пауза") || status.Status.Contains("paused"))
+                    {
+                        lblLoadingStatus.Text = "Простаивает";
+                        lblLoadingStatus.Foreground = new SolidColorBrush(Colors.Gray);
+                    }
+                    else
+                    {
+                        lblLoadingStatus.Text = "Загружается";
+                        lblLoadingStatus.Foreground = new SolidColorBrush(Color.FromRgb(46, 204, 113)); // #2ECC71
+                    }
+                }
+
+                // Показываем кнопки, если загрузка активна
+                btnPauseResume.Visibility = Visibility.Visible;
+                btnSettings.Visibility = Visibility.Visible;
+
                 System.Diagnostics.Debug.WriteLine($"[Hydra] UI Updated: {uiProgress:F1}%");
 
-                UpdatePauseButtonState();
+                //UpdatePauseButtonState();
             });
         }
 
@@ -553,12 +599,12 @@ namespace HydraTorrent.Views
                 if (_isPaused)
                 {
                     await client.PauseAsync(torrentData.TorrentHash);
-                    PlayniteApi.Notifications.Add(new NotificationMessage("Hydra", $"На паузе: {game.Name}", NotificationType.Info));
+                    //PlayniteApi.Notifications.Add(new NotificationMessage("Hydra", $"На паузе: {game.Name}", NotificationType.Info));
                 }
                 else
                 {
                     await client.ResumeAsync(torrentData.TorrentHash);
-                    PlayniteApi.Notifications.Add(new NotificationMessage("Hydra", $"Возобновлена: {game.Name}", NotificationType.Info));
+                    //PlayniteApi.Notifications.Add(new NotificationMessage("Hydra", $"Возобновлена: {game.Name}", NotificationType.Info));
                 }
 
                 // 3. Короткая задержка и принудительное обновление статуса
@@ -592,6 +638,82 @@ namespace HydraTorrent.Views
                 _isPaused = !_isPaused;
                 UpdatePauseButtonState();
                 //await Task.Delay(2000);
+            }
+        }
+
+        private void btnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            if (SettingsContextMenu != null)
+            {
+                SettingsContextMenu.PlacementTarget = btnSettings;
+                SettingsContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                SettingsContextMenu.IsOpen = true;
+            }
+        }
+
+        private async void DeleteTorrentAndFiles_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeGameId == Guid.Empty)
+            {
+                PlayniteApi.Dialogs.ShowMessage("Нет активной загрузки для удаления.", "Hydra");
+                return;
+            }
+
+            var game = PlayniteApi.Database.Games.Get(_activeGameId);
+            if (game == null)
+            {
+                PlayniteApi.Dialogs.ShowMessage("Игра не найдена.", "Ошибка");
+                return;
+            }
+
+            var torrentData = _plugin.GetHydraData(game);
+            if (torrentData == null || string.IsNullOrEmpty(torrentData.TorrentHash))
+            {
+                PlayniteApi.Dialogs.ShowMessage("Не найден хеш торрента.", "Ошибка");
+                return;
+            }
+
+            // Диалог подтверждения
+            var confirm = PlayniteApi.Dialogs.ShowMessage(
+                $"Вы уверены, что хотите удалить торрент «{game.Name}»\nи все скачанные файлы?",
+                "Удаление торрента",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            // Удаляем торрент + файлы
+            var qb = _plugin.GetSettings().Settings;
+            var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+
+            using var client = new QBittorrentClient(url);
+
+            try
+            {
+                await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+                await client.DeleteAsync(torrentData.TorrentHash, deleteDownloadedData: true);
+                
+                // Очищаем статус
+                HydraTorrent.LiveStatus.Remove(_activeGameId);
+                _activeGameId = Guid.Empty;
+                _currentTorrentHash = null;
+
+                // Обновляем UI
+                UpdateDownloadUI(null, null); // передаём null → очистит прогресс и текст
+                txtStatus.Text = "Торрент и файлы удалены";
+
+                PlayniteApi.Notifications.Add(new NotificationMessage(
+                    "Hydra",
+                    $"Торрент «{game.Name}» и файлы удалены",
+                    NotificationType.Info));
+
+                game.IsInstalling = false;
+                PlayniteApi.Database.Games.Update(game);
+            }
+            catch (Exception ex)
+            {
+                PlayniteApi.Dialogs.ShowErrorMessage($"Ошибка удаления: {ex.Message}", "Hydra");
             }
         }
 
