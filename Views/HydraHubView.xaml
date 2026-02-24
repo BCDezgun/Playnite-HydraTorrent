@@ -246,10 +246,10 @@
                             </Grid.ColumnDefinitions>
 
                             <Grid Grid.Column="0">
-                                <!-- Фон игры с градиентным затуханием справа -->
+                                <!-- Фон игры -->
                                 <Image x:Name="imgGameBackground"
-                                       Stretch="UniformToFill"
-                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                        Stretch="UniformToFill"
+                                        RenderOptions.BitmapScalingMode="HighQuality">
                                     <Image.OpacityMask>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                                             <GradientStop Color="#FF000000" Offset="0.0"/>
@@ -258,6 +258,18 @@
                                         </LinearGradientBrush>
                                     </Image.OpacityMask>
                                 </Image>
+
+                                <!-- ← НОВЫЙ ЭЛЕМЕНТ: область для графика скорости -->
+                                <Canvas x:Name="SpeedGraphCanvas" 
+                                        Width="180"
+                                        Height="90"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        Margin="30,-22,0,0"
+                                        ClipToBounds="True"
+                                        Panel.ZIndex="1">
+                                    <!-- Пока пусто — столбики будем добавлять из кода -->
+                                </Canvas>
 
                                 <StackPanel VerticalAlignment="Bottom" Margin="20,0,0,20">
                                     <TextBlock x:Name="lblLoadingStatus" 

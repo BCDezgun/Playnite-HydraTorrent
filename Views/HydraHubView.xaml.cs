@@ -34,6 +34,9 @@ namespace HydraTorrent.Views
         private string _currentTorrentHash = null;
         private bool _isPaused = false;
 
+        private readonly Queue<long> _speedHistory = new Queue<long>(); // последние 15 скоростей (байты/с)
+        private long _graphMaxSpeed = 1; // текущий максимум для масштаба (минимум 1, чтобы не делить на 0)
+
         private List<TorrentResult> _allResults = new List<TorrentResult>();
         private List<TorrentResult> _filteredResults = new List<TorrentResult>();
         private int _currentPage = 1;
@@ -132,6 +135,7 @@ namespace HydraTorrent.Views
                 {
                     UpdateDownloadUI(game, status);
                     UpdatePauseButtonState();  // ← всегда синхронизируем кнопку после обновления
+                    DrawSpeedGraph();
                 }
             }
             else
@@ -159,6 +163,7 @@ namespace HydraTorrent.Views
                     pbDownload.Value = 0;
                     lblDownloadedAmount.Text = "0 ГБ / 0 ГБ";
                     lblETA.Text = "Осталось: --:--:--";
+                    SpeedGraphCanvas.Visibility = Visibility.Collapsed;
 
                     if (lblLoadingStatus != null)
                     {
@@ -185,6 +190,20 @@ namespace HydraTorrent.Views
 
                 lblCurrentSpeed.Text = FormatSpeed(currentSpeedBytes);
                 lblMaxSpeed.Text = FormatSpeed(_maxSpeedSeen);
+
+                _speedHistory.Enqueue(currentSpeedBytes);
+
+                // Ограничиваем историю 15 значениями
+                while (_speedHistory.Count > 15)
+                {
+                    _speedHistory.Dequeue();
+                }
+
+                // Обновляем максимум для динамического масштаба
+                if (currentSpeedBytes > _graphMaxSpeed)
+                {
+                    _graphMaxSpeed = currentSpeedBytes;
+                }
 
                 double uiProgress = status.Progress;
                 if (uiProgress > 0 && uiProgress <= 1.0)
@@ -228,7 +247,7 @@ namespace HydraTorrent.Views
                 btnSettings.Visibility = Visibility.Visible;
 
                 System.Diagnostics.Debug.WriteLine($"[Hydra] UI Updated: {uiProgress:F1}%");
-
+                DrawSpeedGraph();
                 //UpdatePauseButtonState();
             });
         }
@@ -698,9 +717,12 @@ namespace HydraTorrent.Views
                 HydraTorrent.LiveStatus.Remove(_activeGameId);
                 _activeGameId = Guid.Empty;
                 _currentTorrentHash = null;
+                _speedHistory.Clear();
+                _graphMaxSpeed = 1;
 
                 // Обновляем UI
                 UpdateDownloadUI(null, null); // передаём null → очистит прогресс и текст
+                DrawSpeedGraph();
                 txtStatus.Text = "Торрент и файлы удалены";
 
                 PlayniteApi.Notifications.Add(new NotificationMessage(
@@ -750,6 +772,85 @@ namespace HydraTorrent.Views
 
                 btnPauseResume.ToolTip = "Поставить на паузу";
             }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Управление UI
+        // ────────────────────────────────────────────────────────────────
+
+        private void DrawSpeedGraph()
+        {
+            if (_speedHistory.Count == 0 || _activeGameId == Guid.Empty)
+            {
+                SpeedGraphCanvas.Visibility = Visibility.Collapsed;
+                SpeedGraphCanvas.Children.Clear();
+                return;
+            }
+            else
+            {
+                SpeedGraphCanvas.Visibility = Visibility.Visible;
+            }
+
+            if (SpeedGraphCanvas == null || _speedHistory.Count == 0)
+            {
+                SpeedGraphCanvas?.Children.Clear();
+                return;
+            }
+
+            SpeedGraphCanvas.Children.Clear();
+
+            double canvasWidth = SpeedGraphCanvas.ActualWidth;
+            double canvasHeight = SpeedGraphCanvas.ActualHeight;
+
+            if (canvasWidth <= 0 || canvasHeight <= 0) return;
+
+            double barWidth = canvasWidth / 15;           // ширина одного столбика
+            double spacing = barWidth * 0.4;              // отступ между столбиками (20% ширины)
+            double barEffectiveWidth = barWidth - spacing;
+
+            // Преобразуем очередь в массив для удобства (слева — старое, справа — новое)
+            var speeds = _speedHistory.ToArray();
+
+            for (int i = 0; i < speeds.Length; i++)
+            {
+                long speed = speeds[i];
+
+                // Высота столбика (динамический масштаб)
+                double height = (speed / (double)_graphMaxSpeed) * canvasHeight * 0.85; // 85% от высоты — запас сверху
+
+                // Минимальная высота, чтобы даже 1 Мбит/с был виден
+                if (height < 4) height = 4;
+
+                var bar = new Rectangle
+                {
+                    Width = barEffectiveWidth,
+                    Height = height,
+                    Fill = new SolidColorBrush(Color.FromRgb(79, 195, 247)), // #4FC3F7 — синий как в Steam
+                    RadiusX = 0, //скругление
+                    RadiusY = 0  //скругление
+                };
+
+                // Позиция: слева направо double left = i * barWidth + spacing / 2;
+                double left = canvasWidth - (speeds.Length - i) * barWidth + spacing / 2;
+                Canvas.SetLeft(bar, left);
+                Canvas.SetBottom(bar, 0); // столбики растут снизу вверх
+
+                SpeedGraphCanvas.Children.Add(bar);
+            }
+
+            // Добавляем градиент прозрачности слева (затухание)
+            var mask = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 0)
+            };
+
+            mask.GradientStops.Add(new GradientStop(Colors.Transparent, 0.0));   // полностью прозрачно слева
+            mask.GradientStops.Add(new GradientStop(Colors.Transparent, 0.02));   // до 40% ширины — всё ещё прозрачно
+            mask.GradientStops.Add(new GradientStop(Colors.Black, 0.70));         // к 50% — полностью непрозрачно
+            mask.GradientStops.Add(new GradientStop(Colors.Black, 1.0));          // дальше всё видно
+
+            SpeedGraphCanvas.OpacityMask = mask;
         }
 
         // ────────────────────────────────────────────────────────────────
