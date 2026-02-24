@@ -17,6 +17,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Windows.Shapes;
 using QBittorrent.Client;
 
 namespace HydraTorrent.Views
@@ -30,6 +31,8 @@ namespace HydraTorrent.Views
         private DispatcherTimer _uiRefreshTimer;
         private long _maxSpeedSeen = 0;
         private Guid _activeGameId = Guid.Empty;
+        private string _currentTorrentHash = null;
+        private bool _isPaused = false;
 
         private List<TorrentResult> _allResults = new List<TorrentResult>();
         private List<TorrentResult> _filteredResults = new List<TorrentResult>();
@@ -112,22 +115,31 @@ namespace HydraTorrent.Views
 
         private void UIUpdateTimer_Tick(object sender, EventArgs e)
         {
+            // Ищем активную загрузку или паузу
             var activeDownload = HydraTorrent.LiveStatus.FirstOrDefault(x =>
-                x.Value.Status.Contains("Загрузка") && !x.Value.Status.Contains("Пауза"));
-
-            if (activeDownload.Key == Guid.Empty)
-            {
-                activeDownload = HydraTorrent.LiveStatus.FirstOrDefault();
-            }
+                x.Value.Status.Contains("Загрузка") ||   // идёт загрузка
+                x.Value.Status.Contains("Пауза"));       // или на паузе ← добавили
 
             if (activeDownload.Key != Guid.Empty)
             {
+                _activeGameId = activeDownload.Key;      // запоминаем ID активной игры
+                _currentTorrentHash = _plugin.GetHydraData(PlayniteApi.Database.Games.Get(_activeGameId))?.TorrentHash;
+
                 var status = activeDownload.Value;
                 var game = PlayniteApi.Database.Games.Get(activeDownload.Key);
+
                 if (game != null)
                 {
                     UpdateDownloadUI(game, status);
+                    UpdatePauseButtonState();  // ← всегда синхронизируем кнопку после обновления
                 }
+            }
+            else
+            {
+                // Нет активной загрузки — сбрасываем
+                _activeGameId = Guid.Empty;
+                _currentTorrentHash = null;
+                // Можно скрыть или очистить UI, если нужно
             }
         }
 
@@ -170,6 +182,8 @@ namespace HydraTorrent.Views
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[Hydra] UI Updated: {uiProgress:F1}%");
+
+                UpdatePauseButtonState();
             });
         }
 
@@ -498,6 +512,122 @@ namespace HydraTorrent.Views
             string name = Regex.Replace(rawName, @"\[.*?\]|\(.*?\)|v\.?\d+(\.\d+)*", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"(?i)(repack|crack|update|dlc|edition|fitgirl|xatab|mechanics)", "");
             return Regex.Replace(name, @"\s+", " ").Trim('-', '.', ' ');
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Кнопки управления загрузкой
+        // ────────────────────────────────────────────────────────────────
+
+        private async void BtnPauseResume_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeGameId == Guid.Empty)
+            {
+                PlayniteApi.Dialogs.ShowMessage("Нет активной загрузки.", "Hydra");
+                return;
+            }
+
+            var game = PlayniteApi.Database.Games.Get(_activeGameId);
+            if (game == null) return;
+
+            var torrentData = _plugin.GetHydraData(game);
+            if (torrentData == null || string.IsNullOrEmpty(torrentData.TorrentHash))
+            {
+                PlayniteApi.Dialogs.ShowMessage("Не найден хеш торрента.", "Ошибка");
+                return;
+            }
+
+            // 1. Мгновенный визуальный отклик
+            _isPaused = !_isPaused;  // переключаем состояние
+            UpdatePauseButtonState();  // сразу меняем иконку
+
+            // 2. Отправляем команду в qBittorrent
+            var qb = _plugin.GetSettings().Settings;
+            var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+
+            using var client = new QBittorrentClient(url);
+
+            try
+            {
+                await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+
+                if (_isPaused)
+                {
+                    await client.PauseAsync(torrentData.TorrentHash);
+                    PlayniteApi.Notifications.Add(new NotificationMessage("Hydra", $"На паузе: {game.Name}", NotificationType.Info));
+                }
+                else
+                {
+                    await client.ResumeAsync(torrentData.TorrentHash);
+                    PlayniteApi.Notifications.Add(new NotificationMessage("Hydra", $"Возобновлена: {game.Name}", NotificationType.Info));
+                }
+
+                // 3. Короткая задержка и принудительное обновление статуса
+                await Task.Delay(350);  // даём qBittorrent обработать команду
+
+                // Запрашиваем свежий статус именно этого торрента
+                var torrents = await client.GetTorrentListAsync();
+                var torrent = torrents.FirstOrDefault(t => t.Hash.Equals(torrentData.TorrentHash, StringComparison.OrdinalIgnoreCase));
+
+                if (torrent != null)
+                {
+                    var newStatus = new HydraTorrent.TorrentStatusInfo
+                    {
+                        Progress = torrent.Progress,
+                        Status = torrent.State.ToString(),
+                        DownloadSpeed = torrent.DownloadSpeed,
+                        TotalSize = torrent.TotalSize ?? 0,
+                        DownloadedSize = torrent.Downloaded ?? 0,
+                        ETA = torrent.EstimatedTime
+                    };
+
+                    HydraTorrent.LiveStatus[_activeGameId] = newStatus;
+                    UpdateDownloadUI(game, newStatus);
+                    UpdatePauseButtonState();  // финальная синхронизация иконки
+                }
+            }
+            catch (Exception ex)
+            {
+                PlayniteApi.Dialogs.ShowErrorMessage($"Ошибка управления: {ex.Message}", "Hydra");
+                // Если ошибка — откатываем визуальное состояние (чтобы не залипло)
+                _isPaused = !_isPaused;
+                UpdatePauseButtonState();
+                //await Task.Delay(2000);
+            }
+        }
+
+        private void UpdatePauseButtonState()
+        {
+            if (btnPauseResume == null) return;
+
+            // Просто переключаем иконку и тултип по локальному состоянию
+            if (_isPaused)
+            {
+                // Иконка Play (возобновить)
+                var pauseIcon = btnPauseResume.Template.FindName("PauseIcon", btnPauseResume) as Path;
+                var playIcon = btnPauseResume.Template.FindName("PlayIcon", btnPauseResume) as Path;
+
+                if (pauseIcon != null && playIcon != null)
+                {
+                    pauseIcon.Visibility = Visibility.Collapsed;
+                    playIcon.Visibility = Visibility.Visible;
+                }
+
+                btnPauseResume.ToolTip = "Возобновить загрузку";
+            }
+            else
+            {
+                // Иконка Pause (остановить)
+                var pauseIcon = btnPauseResume.Template.FindName("PauseIcon", btnPauseResume) as Path;
+                var playIcon = btnPauseResume.Template.FindName("PlayIcon", btnPauseResume) as Path;
+
+                if (pauseIcon != null && playIcon != null)
+                {
+                    pauseIcon.Visibility = Visibility.Visible;
+                    playIcon.Visibility = Visibility.Collapsed;
+                }
+
+                btnPauseResume.ToolTip = "Поставить на паузу";
+            }
         }
 
         // ────────────────────────────────────────────────────────────────
