@@ -9,13 +9,15 @@ namespace HydraTorrent
     /// </summary>
     public class SourceEntry
     {
-        public string Name { get; set; } = string.Empty;   // будет заполняться автоматически из JSON
+        public string Name { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
     }
 
     public class HydraTorrentSettings : ObservableObject
     {
-        // ==================== qBittorrent ====================
+        // ────────────────────────────────────────────────────────────────
+        // qBittorrent
+        // ────────────────────────────────────────────────────────────────
         private string qbHost = "127.0.0.1";
         private int qbPort = 8080;
         private string qbUsername = "admin";
@@ -28,22 +30,22 @@ namespace HydraTorrent
         public string QBittorrentPassword { get => qbPassword; set => SetValue(ref qbPassword, value); }
         public bool UseQbittorrent { get => useQbittorrent; set => SetValue(ref useQbittorrent, value); }
 
-        // ==================== Пути загрузки ====================
+        // ────────────────────────────────────────────────────────────────
+        // Пути загрузки
+        // ────────────────────────────────────────────────────────────────
         private bool useDefaultDownloadPath = true;
         private string defaultDownloadPath = "";
 
         public bool UseDefaultDownloadPath { get => useDefaultDownloadPath; set => SetValue(ref useDefaultDownloadPath, value); }
         public string DefaultDownloadPath { get => defaultDownloadPath; set => SetValue(ref defaultDownloadPath, value); }
 
-        // ==================== ИСТОЧНИКИ ====================
-        // Пустой список по умолчанию — пользователь сам добавляет всё, что хочет
+        // ────────────────────────────────────────────────────────────────
+        // Источники и история поиска
+        // ────────────────────────────────────────────────────────────────
         public List<SourceEntry> Sources { get; set; } = new List<SourceEntry>();
-
-        // =================== ХЭШ ПОИСКА ====================
         public List<string> SearchHistory { get; set; } = new List<string>();
     }
 
-    // ViewModel (без изменений)
     public class HydraTorrentSettingsViewModel : ObservableObject, ISettings
     {
         private readonly HydraTorrent plugin;
@@ -65,14 +67,20 @@ namespace HydraTorrent
             Settings = saved ?? new HydraTorrentSettings();
         }
 
-        public void BeginEdit() => editingClone = Serialization.GetClone(Settings);
-        public void CancelEdit() => Settings = editingClone;
+        public void BeginEdit()
+        {
+            editingClone = Serialization.GetClone(Settings);
+        }
+
+        public void CancelEdit()
+        {
+            Settings = editingClone;
+        }
+
         public void EndEdit()
         {
-            // === ДОБАВЬ ЭТОТ БЛОК ===
             // Перед сохранением принудительно забираем данные из UI
             SettingsView?.SaveSources();
-
             plugin.SavePluginSettings(Settings);
         }
 

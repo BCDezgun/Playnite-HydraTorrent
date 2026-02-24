@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,15 +23,16 @@ namespace HydraTorrent
     public class HydraTorrent : LibraryPlugin
     {
         private ScraperService _scraperService;
-        public static readonly ILogger logger = LogManager.GetLogger(); // Сделали PUBLIC
+        public static readonly ILogger logger = LogManager.GetLogger();
         private HydraTorrentSettingsViewModel settings { get; set; }
+
         public override Guid Id { get; } = Guid.Parse("c2177dc7-8179-4098-8b6c-d683ce415279");
         public override string Name => "HydraTorrent";
         public override LibraryClient Client { get; } = new HydraTorrentClient();
+
         private const string TorrentDataFolder = "HydraTorrents";
         private TorrentMonitor _monitor;
 
-        // Хранилище для обмена данными между монитором и контроллером
         public static Dictionary<Guid, TorrentStatusInfo> LiveStatus = new Dictionary<Guid, TorrentStatusInfo>();
 
         public class TorrentStatusInfo
@@ -45,17 +47,16 @@ namespace HydraTorrent
 
         public HydraTorrent(IPlayniteAPI api) : base(api)
         {
-            // 1. Сначала создаем настройки
             settings = new HydraTorrentSettingsViewModel(this);
-
-            // 2. Теперь создаем сервис скрейпера, передавая ему объект настроек внутри вью-модели
             _scraperService = new ScraperService(settings.Settings);
-
             Properties = new LibraryPluginProperties { HasSettings = true };
             _monitor = new TorrentMonitor(api, this);
         }
 
-        // ====================== ХРАНЕНИЕ ДАННЫХ ======================
+        // ────────────────────────────────────────────────────────────────
+        // Хранение данных торрента
+        // ────────────────────────────────────────────────────────────────
+
         private string GetTorrentDataPath(Guid gameId)
         {
             var dataDir = Path.Combine(GetPluginUserDataPath(), TorrentDataFolder);
@@ -66,8 +67,10 @@ namespace HydraTorrent
         public TorrentResult GetHydraData(Game game)
         {
             if (game == null) return null;
+
             var filePath = GetTorrentDataPath(game.Id);
             if (!File.Exists(filePath)) return null;
+
             try
             {
                 var json = File.ReadAllText(filePath);
@@ -83,19 +86,28 @@ namespace HydraTorrent
         public void SaveHydraData(Game game, TorrentResult torrent)
         {
             if (game == null || torrent == null) return;
+
             var filePath = GetTorrentDataPath(game.Id);
+
             try
             {
                 var json = JsonConvert.SerializeObject(torrent, Formatting.Indented);
                 File.WriteAllText(filePath, json);
             }
-            catch (Exception ex) { logger.Error(ex, "Ошибка сохранения данных торрента"); }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Ошибка сохранения данных торрента");
+            }
         }
 
-        // ====================== УПРАВЛЕНИЕ УСТАНОВКОЙ ======================
+        // ────────────────────────────────────────────────────────────────
+        // Установка игры
+        // ────────────────────────────────────────────────────────────────
+
         public override IEnumerable<InstallController> GetInstallActions(GetInstallActionsArgs args)
         {
             if (args.Game.PluginId != Id) yield break;
+
             var torrentData = GetHydraData(args.Game);
             if (torrentData != null)
             {
@@ -120,10 +132,11 @@ namespace HydraTorrent
                 using (var client = new QBittorrentClient(url))
                 {
                     await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+
                     var request = new AddTorrentsRequest { Paused = false, DownloadFolder = finalPath };
                     request.TorrentUrls.Add(new Uri(torrentData.Magnet));
-
                     await client.AddTorrentsAsync(request);
+
                     await Task.Delay(2000);
 
                     var hash = ExtractHashFromMagnet(torrentData.Magnet);
@@ -137,7 +150,10 @@ namespace HydraTorrent
                     PlayniteApi.Database.Games.Update(game);
                 }
             }
-            catch (Exception ex) { logger.Error(ex, "Ошибка qBittorrent"); }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Ошибка qBittorrent");
+            }
         }
 
         private string ShowCustomInstallPathDialog(string gameName)
@@ -154,11 +170,11 @@ namespace HydraTorrent
         private string ExtractHashFromMagnet(string magnet)
         {
             if (string.IsNullOrEmpty(magnet)) return null;
-            var match = System.Text.RegularExpressions.Regex.Match(magnet, @"urn:btih:([a-fA-F0-9]{40})", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            var match = Regex.Match(magnet, @"urn:btih:([a-fA-F0-9]{40})", RegexOptions.IgnoreCase);
             return match.Success ? match.Groups[1].Value.ToLowerInvariant() : null;
         }
 
-        // ====================== ОЧИЩЕННЫЙ КОНТРОЛЛЕР ======================
         private class HydraInstallController : InstallController
         {
             private readonly HydraTorrent _plugin;
@@ -175,10 +191,14 @@ namespace HydraTorrent
             {
                 _plugin.InstallGame(Game, _torrentData);
 
-                // Таймер только для проверки завершения (раз в 5 сек вполне достаточно)
                 _watcherTimer = new System.Timers.Timer(5000);
-                _watcherTimer.Elapsed += (s, e) => CheckCompletion();
+                _watcherTimer.Elapsed += WatcherTimer_Elapsed;
                 _watcherTimer.Start();
+            }
+
+            private void WatcherTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+            {
+                CheckCompletion();
             }
 
             private void CheckCompletion()
@@ -201,15 +221,16 @@ namespace HydraTorrent
             }
         }
 
-        // ====================== ИНТЕРФЕЙС И СОБЫТИЯ ======================
+        // ────────────────────────────────────────────────────────────────
+        // Sidebar и жизненный цикл
+        // ────────────────────────────────────────────────────────────────
 
         public override IEnumerable<SidebarItem> GetSidebarItems()
         {
             yield return new SidebarItem
             {
                 Title = "Hydra Hub",
-                Type = SiderbarItemType.View,   // ← вот так, с опечаткой SiderbarItemType
-
+                Type = SiderbarItemType.View,
                 Icon = new TextBlock
                 {
                     Text = "🐙",
@@ -217,17 +238,41 @@ namespace HydraTorrent
                     FontFamily = ResourceProvider.GetResource("FontIcoFont") as FontFamily
                                  ?? new FontFamily("Segoe UI Emoji")
                 },
-
                 Opened = () => new HydraHubView(PlayniteApi, this)
             };
         }
 
-        public override void OnApplicationStarted(OnApplicationStartedEventArgs args) { _monitor.Start(); }
-        public override IEnumerable<GameMetadata> GetGames(LibraryGetGamesArgs args) => new List<GameMetadata>();
-        public override ISettings GetSettings(bool firstRunSettings) => settings;
-        public override UserControl GetSettingsView(bool firstRunSettings) => new HydraTorrentSettingsView(settings);
-        public override void Dispose() { _monitor?.Dispose(); base.Dispose(); }
-        public HydraTorrentSettingsViewModel GetSettings() => settings;
+        public override void OnApplicationStarted(OnApplicationStartedEventArgs args)
+        {
+            _monitor.Start();
+        }
+
+        public override IEnumerable<GameMetadata> GetGames(LibraryGetGamesArgs args)
+        {
+            return new List<GameMetadata>();
+        }
+
+        public override ISettings GetSettings(bool firstRunSettings)
+        {
+            return settings;
+        }
+
+        public override UserControl GetSettingsView(bool firstRunSettings)
+        {
+            return new HydraTorrentSettingsView(settings);
+        }
+
+        public override void Dispose()
+        {
+            _monitor?.Dispose();
+            base.Dispose();
+        }
+
+        public HydraTorrentSettingsViewModel GetSettings()
+        {
+            return settings;
+        }
+
         public ScraperService GetScraperService()
         {
             return _scraperService;

@@ -1,7 +1,7 @@
 ﻿using Playnite.SDK;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Threading; // Для таймера задержки
+using System.Windows.Threading;
 using QBittorrent.Client;
 using System;
 using System.Threading.Tasks;
@@ -14,6 +14,7 @@ namespace HydraTorrent
     public partial class HydraTorrentSettingsView : UserControl
     {
         private readonly HydraTorrentSettingsViewModel viewModel;
+        private readonly List<SourceRow> _sourceRows = new List<SourceRow>();
 
         public HydraTorrentSettingsView(HydraTorrentSettingsViewModel vm)
         {
@@ -25,9 +26,12 @@ namespace HydraTorrent
             viewModel.SettingsView = this;
 
             txtPassword.Password = viewModel.Settings.QBittorrentPassword ?? "";
-
             LoadSources();
         }
+
+        // ────────────────────────────────────────────────────────────────
+        // События элементов управления
+        // ────────────────────────────────────────────────────────────────
 
         private void txtPassword_PasswordChanged(object sender, RoutedEventArgs e)
         {
@@ -59,6 +63,7 @@ namespace HydraTorrent
             string password = txtPassword.Password ?? "";
             var url = new Uri($"http://{settings.QBittorrentHost}:{settings.QBittorrentPort}");
             var client = new QBittorrentClient(url);
+
             try
             {
                 await client.LoginAsync(settings.QBittorrentUsername, password);
@@ -71,11 +76,9 @@ namespace HydraTorrent
             }
         }
 
-        // ==============================================
-        // ЛОГИКА ИСТОЧНИКОВ
-        // ==============================================
-
-        private readonly List<SourceRow> _sourceRows = new List<SourceRow>();
+        // ────────────────────────────────────────────────────────────────
+        // Управление источниками
+        // ────────────────────────────────────────────────────────────────
 
         private void LoadSources()
         {
@@ -88,7 +91,9 @@ namespace HydraTorrent
             }
 
             if (_sourceRows.Count == 0)
+            {
                 AddSourceRow(new SourceEntry());
+            }
         }
 
         private void AddSource_Click(object sender, RoutedEventArgs e)
@@ -112,6 +117,7 @@ namespace HydraTorrent
         public void SaveSources()
         {
             viewModel.Settings.Sources.Clear();
+
             foreach (var row in _sourceRows)
             {
                 var entry = row.GetEntry();
@@ -122,7 +128,10 @@ namespace HydraTorrent
             }
         }
 
-        // Вспомогательный класс строки (теперь без кнопки, с авто-проверкой)
+        // ────────────────────────────────────────────────────────────────
+        // Вспомогательный класс строки источника
+        // ────────────────────────────────────────────────────────────────
+
         private class SourceRow : Grid
         {
             private readonly TextBox _urlBox;
@@ -136,14 +145,15 @@ namespace HydraTorrent
                 _entry = entry;
                 Margin = new Thickness(0, 5, 0, 5);
 
-                // Инициализируем таймер задержки (700 мс)
+                // Таймер задержки для авто-загрузки имени (700 мс)
                 _typingTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
-                _typingTimer.Tick += async (s, e) => {
+                _typingTimer.Tick += async (s, e) =>
+                {
                     _typingTimer.Stop();
                     await LoadNameAsync();
                 };
 
-                // Настраиваем колонки: URL (максимум места), Имя (авто), Кнопка удаления (фиксировано)
+                // Колонки: URL (растягивается), Имя (авто), Кнопка удаления
                 ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -155,22 +165,25 @@ namespace HydraTorrent
                     VerticalContentAlignment = VerticalAlignment.Center,
                     Tag = "Введите URL JSON-источника..."
                 };
-                // Слушаем изменение текста
-                _urlBox.TextChanged += (s, e) => {
+
+                _urlBox.TextChanged += (s, e) =>
+                {
                     _typingTimer.Stop();
                     _typingTimer.Start();
                 };
+
                 Grid.SetColumn(_urlBox, 0);
 
                 _nameBlock = new TextBlock
                 {
                     Text = entry.Name ?? "",
                     VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = System.Windows.Media.Brushes.SpringGreen, // Сделаем имя заметнее
+                    Foreground = System.Windows.Media.Brushes.SpringGreen,
                     Margin = new Thickness(5, 0, 10, 0),
                     FontWeight = FontWeights.SemiBold,
                     TextTrimming = TextTrimming.CharacterEllipsis
                 };
+
                 Grid.SetColumn(_nameBlock, 1);
 
                 _removeBtn = new Button
@@ -181,6 +194,7 @@ namespace HydraTorrent
                     Foreground = System.Windows.Media.Brushes.Red,
                     ToolTip = "Удалить источник"
                 };
+
                 _removeBtn.Click += (s, e) => onRemove(this);
                 Grid.SetColumn(_removeBtn, 2);
 
@@ -188,7 +202,7 @@ namespace HydraTorrent
                 Children.Add(_nameBlock);
                 Children.Add(_removeBtn);
 
-                // Если при загрузке уже есть URL, пробуем подтянуть имя
+                // Если URL уже есть — пробуем подтянуть имя сразу
                 if (!string.IsNullOrEmpty(entry.Url))
                 {
                     Task.Run(async () => await LoadNameAsync());
@@ -197,11 +211,9 @@ namespace HydraTorrent
 
             private async Task LoadNameAsync()
             {
-                // Выполняем в UI-потоке, так как будем менять текст
                 await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     var url = _urlBox.Text.Trim();
-
                     if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http"))
                     {
                         _nameBlock.Text = "";
@@ -217,14 +229,13 @@ namespace HydraTorrent
                             var json = await client.GetStringAsync(url);
                             var data = JObject.Parse(json);
                             string name = data["name"]?.ToString() ?? "OK";
-
                             _nameBlock.Text = name;
                             _entry.Name = name;
                         }
                     }
                     catch
                     {
-                        _nameBlock.Text = "⚠️"; // Ошибка связи или неверный формат
+                        _nameBlock.Text = "⚠️";
                         _entry.Name = "";
                     }
                 });

@@ -28,16 +28,20 @@ namespace HydraTorrent.Views
         private readonly ScraperService _scraperService;
 
         private DispatcherTimer _uiRefreshTimer;
-        private long _maxSpeedSeen = 0; // Для хранения пиковой скорости в байтах
-        private Guid _activeGameId = Guid.Empty; // ID игры, которую сейчас показываем в топе
+        private long _maxSpeedSeen = 0;
+        private Guid _activeGameId = Guid.Empty;
 
-        private List<TorrentResult> _allResults = new List<TorrentResult>(); // Хранит ВСЕ результаты последнего поиска
-        private List<TorrentResult> _filteredResults = new List<TorrentResult>(); // Хранит результаты с учетом фильтров
+        private List<TorrentResult> _allResults = new List<TorrentResult>();
+        private List<TorrentResult> _filteredResults = new List<TorrentResult>();
         private int _currentPage = 1;
         private const int _itemsPerPage = 10;
+
         public static HydraHubView CurrentInstance { get; private set; }
 
-        // --- Свойства для фильтров ---
+        // ────────────────────────────────────────────────────────────────
+        // Фильтры источников
+        // ────────────────────────────────────────────────────────────────
+
         public ObservableCollection<SourceFilterItem> FilterSources { get; set; } = new ObservableCollection<SourceFilterItem>();
 
         private bool _isAllSourcesSelected = true;
@@ -51,7 +55,7 @@ namespace HydraTorrent.Views
                     _isAllSourcesSelected = value;
                     OnPropertyChanged();
                     UpdateSourceButtonText();
-                    ApplyLocalFilters(); // Мгновенно применяем при изменении "Все источники"
+                    ApplyLocalFilters();
                 }
             }
         }
@@ -66,13 +70,12 @@ namespace HydraTorrent.Views
         public HydraHubView(IPlayniteAPI api, HydraTorrent plugin)
         {
             InitializeComponent();
-
             CurrentInstance = this;
+
             PlayniteApi = api;
             _plugin = plugin;
             _scraperService = plugin.GetScraperService();
 
-            // Инициализируем источники из настроек
             var settings = _plugin.GetSettings().Settings;
             if (settings.Sources != null)
             {
@@ -84,16 +87,21 @@ namespace HydraTorrent.Views
                         if (e.PropertyName == nameof(SourceFilterItem.IsSelected))
                         {
                             UpdateSourceButtonText();
-                            ApplyLocalFilters(); // Мгновенно применяем при клике на конкретный источник
+                            ApplyLocalFilters();
                         }
                     };
                     FilterSources.Add(item);
                 }
             }
 
-            this.DataContext = this;
+            DataContext = this;
             InitDownloadManager();
         }
+
+        // ────────────────────────────────────────────────────────────────
+        // Таймер обновления UI загрузок
+        // ────────────────────────────────────────────────────────────────
+
         private void InitDownloadManager()
         {
             _uiRefreshTimer = new DispatcherTimer();
@@ -101,32 +109,34 @@ namespace HydraTorrent.Views
             _uiRefreshTimer.Tick += UIUpdateTimer_Tick;
             _uiRefreshTimer.Start();
         }
+
         private void UIUpdateTimer_Tick(object sender, EventArgs e)
         {
-            // Ищем в LiveStatus первую игру, которая сейчас качается
             var activeDownload = HydraTorrent.LiveStatus.FirstOrDefault(x =>
                 x.Value.Status.Contains("Загрузка") && !x.Value.Status.Contains("Пауза"));
 
-            // Если ничего не качается, ищем просто любую активную запись (например, паузу)
             if (activeDownload.Key == Guid.Empty)
+            {
                 activeDownload = HydraTorrent.LiveStatus.FirstOrDefault();
+            }
 
             if (activeDownload.Key != Guid.Empty)
             {
                 var status = activeDownload.Value;
                 var game = PlayniteApi.Database.Games.Get(activeDownload.Key);
-
                 if (game != null)
                 {
                     UpdateDownloadUI(game, status);
                 }
             }
         }
+
         public void UpdateDownloadUI(Game game, HydraTorrent.TorrentStatusInfo status)
         {
             Dispatcher.Invoke(() =>
             {
                 UpdateGameBackground(game);
+
                 if (status == null) return;
 
                 if (txtCurrentGameName != null)
@@ -162,6 +172,7 @@ namespace HydraTorrent.Views
                 System.Diagnostics.Debug.WriteLine($"[Hydra] UI Updated: {uiProgress:F1}%");
             });
         }
+
         private void UpdateGameBackground(Game game)
         {
             if (imgGameBackground == null)
@@ -176,13 +187,11 @@ namespace HydraTorrent.Views
                 {
                     string imageFileName = null;
 
-                    // 1. Фон (приоритет)
                     if (!string.IsNullOrEmpty(game.BackgroundImage))
                     {
                         imageFileName = game.BackgroundImage;
                         System.Diagnostics.Debug.WriteLine($"[Hydra] Using BackgroundImage: {imageFileName}");
                     }
-                    // 2. Обложка как запасной вариант
                     else if (!string.IsNullOrEmpty(game.CoverImage))
                     {
                         imageFileName = game.CoverImage;
@@ -196,17 +205,12 @@ namespace HydraTorrent.Views
                         return;
                     }
 
-                    // Базовая папка библиотеки Playnite
                     string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                     string libraryFilesDir = System.IO.Path.Combine(appData, "Playnite", "library", "files");
 
-                    // Полный путь к папке игры
                     string gameFolder = System.IO.Path.Combine(libraryFilesDir, game.Id.ToString());
-
-                    // Полный путь к файлу изображения
                     string fullImagePath = System.IO.Path.Combine(gameFolder, imageFileName);
 
-                    // Если имя содержит подпапку (GUID\filename.jpg) — Playnite иногда так хранит
                     if (imageFileName.Contains("\\"))
                     {
                         fullImagePath = System.IO.Path.Combine(libraryFilesDir, imageFileName);
@@ -235,20 +239,17 @@ namespace HydraTorrent.Views
                 }
             });
         }
+
         private string FormatSpeed(long bytesPerSecond)
         {
-            double mbps = (bytesPerSecond * 8.0) / (1024 * 1024); // Переводим в Мбит/с
+            double mbps = (bytesPerSecond * 8.0) / (1024 * 1024);
             return $"{mbps:F1} Мбит/с";
         }
-        private void BtnPauseResume_Click(object sender, RoutedEventArgs e)
-        {
-            // Тут нам нужен доступ к _client из TorrentMonitor. 
-            // Проще всего в классе HydraTorrent сделать метод PauseGame(Guid gameId)
-            // И вызывать его отсюда:
-            // _plugin.PauseTorrent(_activeGameId);
-        }
 
-        // Логика фильтрации уже загруженных данных
+        // ────────────────────────────────────────────────────────────────
+        // Поиск и фильтры
+        // ────────────────────────────────────────────────────────────────
+
         private void ApplyLocalFilters()
         {
             if (_allResults == null || !_allResults.Any()) return;
@@ -263,7 +264,6 @@ namespace HydraTorrent.Views
                 _filteredResults = _allResults.Where(r => activeSources.Contains(r.Source)).ToList();
             }
 
-            // После фильтрации возвращаемся на первую страницу
             ShowPage(1);
         }
 
@@ -287,63 +287,6 @@ namespace HydraTorrent.Views
             else
             {
                 SourceButtonText = $"{selected[0].Name} + {selected.Count - 1}";
-            }
-        }
-
-        private void BtnBack_Click(object sender, RoutedEventArgs e)
-        {
-            PlayniteApi.MainView.SwitchToLibraryView();
-        }
-
-        private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            var query = txtSearch.Text.ToLower().Trim();
-            var history = _plugin.GetSettings().Settings.SearchHistory;
-
-            if (string.IsNullOrEmpty(query) || history == null || history.Count == 0)
-            {
-                HistoryPopup.IsOpen = false;
-                return;
-            }
-
-            var filtered = history.Where(h => h.ToLower().Contains(query)).Take(5).ToList();
-
-            if (filtered.Any())
-            {
-                lstHistory.ItemsSource = filtered;
-                HistoryPopup.IsOpen = true;
-            }
-            else
-            {
-                HistoryPopup.IsOpen = false;
-            }
-        }
-
-        private void BtnDeleteHistory_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.Tag is string queryToRemove)
-            {
-                var settings = _plugin.GetSettings().Settings;
-                if (settings.SearchHistory.Contains(queryToRemove))
-                {
-                    settings.SearchHistory.Remove(queryToRemove);
-                    _plugin.SavePluginSettings(settings);
-
-                    // Обновляем список в Popup, чтобы он сразу визуально изменился
-                    TxtSearch_TextChanged(null, null);
-                }
-            }
-            // Чтобы клик по кнопке удаления не вызывал поиск (событие SelectionChanged)
-            e.Handled = true;
-        }
-
-        private void LstHistory_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (lstHistory.SelectedItem is string selectedQuery)
-            {
-                txtSearch.Text = selectedQuery;
-                HistoryPopup.IsOpen = false;
-                _ = PerformSearch();
             }
         }
 
@@ -388,10 +331,7 @@ namespace HydraTorrent.Views
 
             try
             {
-                // Загружаем данные из сети
                 var results = await _scraperService.SearchAsync(query);
-
-                // Сохраняем "сырой" результат поиска в кэш
                 _allResults = results ?? new List<TorrentResult>();
 
                 if (_allResults.Count == 0)
@@ -401,7 +341,6 @@ namespace HydraTorrent.Views
                 }
                 else
                 {
-                    // Применяем фильтры к полученным данным
                     ApplyLocalFilters();
                 }
             }
@@ -431,6 +370,7 @@ namespace HydraTorrent.Views
 
             int totalPages = (int)Math.Ceiling((double)_filteredResults.Count / _itemsPerPage);
             txtStatus.Text = $"Найдено: {_filteredResults.Count} (Страница {_currentPage} из {totalPages})";
+
             UpdatePaginationButtons(totalPages);
         }
 
@@ -438,6 +378,7 @@ namespace HydraTorrent.Views
         {
             pnlPagination.Children.Clear();
             if (totalPages <= 1) return;
+
             for (int i = 1; i <= totalPages; i++)
             {
                 var btn = new Button
@@ -448,10 +389,73 @@ namespace HydraTorrent.Views
                     Cursor = Cursors.Hand,
                     Background = (i == _currentPage) ? Brushes.SkyBlue : Brushes.Transparent
                 };
-                btn.Click += (s, e) => { if (s is Button b && b.Tag is int p) ShowPage(p); };
+
+                btn.Click += (s, e) =>
+                {
+                    if (s is Button b && b.Tag is int p)
+                        ShowPage(p);
+                };
+
                 pnlPagination.Children.Add(btn);
             }
         }
+
+        // ────────────────────────────────────────────────────────────────
+        // История поиска и удаление
+        // ────────────────────────────────────────────────────────────────
+
+        private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var query = txtSearch.Text.ToLower().Trim();
+            var history = _plugin.GetSettings().Settings.SearchHistory;
+
+            if (string.IsNullOrEmpty(query) || history == null || history.Count == 0)
+            {
+                HistoryPopup.IsOpen = false;
+                return;
+            }
+
+            var filtered = history.Where(h => h.ToLower().Contains(query)).Take(5).ToList();
+            if (filtered.Any())
+            {
+                lstHistory.ItemsSource = filtered;
+                HistoryPopup.IsOpen = true;
+            }
+            else
+            {
+                HistoryPopup.IsOpen = false;
+            }
+        }
+
+        private void BtnDeleteHistory_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string queryToRemove)
+            {
+                var settings = _plugin.GetSettings().Settings;
+                if (settings.SearchHistory.Contains(queryToRemove))
+                {
+                    settings.SearchHistory.Remove(queryToRemove);
+                    _plugin.SavePluginSettings(settings);
+                    TxtSearch_TextChanged(null, null);
+                }
+            }
+
+            e.Handled = true;
+        }
+
+        private void LstHistory_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (lstHistory.SelectedItem is string selectedQuery)
+            {
+                txtSearch.Text = selectedQuery;
+                HistoryPopup.IsOpen = false;
+                _ = PerformSearch();
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Добавление игры в библиотеку
+        // ────────────────────────────────────────────────────────────────
 
         private void LstResults_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
@@ -460,11 +464,13 @@ namespace HydraTorrent.Views
                 var existingGame = PlayniteApi.Database.Games.FirstOrDefault(g => g.Name.Equals(result.Name, StringComparison.OrdinalIgnoreCase));
                 if (existingGame != null)
                 {
-                    if (PlayniteApi.Dialogs.ShowMessage($"Игра «{existingGame.Name}» уже есть. Добавить еще раз?", "Внимание", MessageBoxButton.YesNo) == MessageBoxResult.No) return;
+                    if (PlayniteApi.Dialogs.ShowMessage($"Игра «{existingGame.Name}» уже есть. Добавить еще раз?", "Внимание", MessageBoxButton.YesNo) == MessageBoxResult.No)
+                        return;
                 }
 
                 string suggestedName = CleanGameName(result.Name);
                 var dialogResult = PlayniteApi.Dialogs.SelectString("Отредактируйте название:", "Название игры", suggestedName);
+
                 if (!dialogResult.Result) return;
 
                 string finalName = dialogResult.SelectedString?.Trim();
@@ -488,12 +494,18 @@ namespace HydraTorrent.Views
         private string CleanGameName(string rawName)
         {
             if (string.IsNullOrEmpty(rawName)) return rawName;
+
             string name = Regex.Replace(rawName, @"\[.*?\]|\(.*?\)|v\.?\d+(\.\d+)*", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"(?i)(repack|crack|update|dlc|edition|fitgirl|xatab|mechanics)", "");
             return Regex.Replace(name, @"\s+", " ").Trim('-', '.', ' ');
         }
 
+        // ────────────────────────────────────────────────────────────────
+        // INotifyPropertyChanged
+        // ────────────────────────────────────────────────────────────────
+
         public event PropertyChangedEventHandler PropertyChanged;
+
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -503,7 +515,9 @@ namespace HydraTorrent.Views
     public class SourceFilterItem : INotifyPropertyChanged
     {
         private bool _isSelected;
+
         public string Name { get; set; }
+
         public bool IsSelected
         {
             get => _isSelected;
@@ -511,6 +525,7 @@ namespace HydraTorrent.Views
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -520,6 +535,7 @@ namespace HydraTorrent.Views
     public class InverseBoolConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => !(bool)value;
+
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => !(bool)value;
     }
 
@@ -537,6 +553,10 @@ namespace HydraTorrent.Views
             }
             return 100;
         }
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
