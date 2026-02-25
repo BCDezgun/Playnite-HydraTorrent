@@ -212,7 +212,14 @@ namespace HydraTorrent
             var game = PlayniteApi.Database.Games.Get(nextQueued.GameId.Value);
             if (game != null)
             {
-                game.IsInstalling = true;
+                game.IsInstalling = true;                
+                
+                if (string.IsNullOrEmpty(nextQueued.GameName))
+                {
+                    nextQueued.GameName = game.Name;
+                    SaveQueue();
+                }
+
                 PlayniteApi.Database.Games.Update(game);
             }
 
@@ -291,6 +298,7 @@ namespace HydraTorrent
             torrentData.TorrentHash = hash;
             torrentData.GameId = game.Id;
             torrentData.AddedToQueueAt = DateTime.Now;
+            torrentData.GameName = game.Name;
 
             var qb = settings.Settings;
             string finalPath = (qb.UseDefaultDownloadPath == false || string.IsNullOrEmpty(qb.DefaultDownloadPath))
@@ -337,6 +345,14 @@ namespace HydraTorrent
                             NotificationType.Info));
 
                         logger.Info($"Добавлено в очередь: {game.Name} (позиция {position})");
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(500); // ✅ Даём время на сохранение и обновление UI
+                            if (HydraHubView.CurrentInstance != null)
+                            {
+                                HydraHubView.CurrentInstance.RefreshQueueUI();
+                            }
+                        });
                     }
                     else
                     {

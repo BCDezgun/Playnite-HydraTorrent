@@ -2,6 +2,7 @@
 using HydraTorrent.Scrapers;
 using Playnite.SDK;
 using Playnite.SDK.Models;
+using QBittorrent.Client;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -16,9 +17,9 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using QBittorrent.Client;
+using System.Windows.Threading;
 
 namespace HydraTorrent.Views
 {
@@ -37,6 +38,8 @@ namespace HydraTorrent.Views
 
         private readonly Queue<long> _speedHistory = new Queue<long>(); // последние 15 скоростей (байты/с)
         private long _graphMaxSpeed = 1; // текущий максимум для масштаба (минимум 1, чтобы не делить на 0)
+
+        private readonly Dictionary<Guid, BitmapImage> _coverCache = new Dictionary<Guid, BitmapImage>();
 
         private List<TorrentResult> _allResults = new List<TorrentResult>();
         private List<TorrentResult> _filteredResults = new List<TorrentResult>();
@@ -363,6 +366,170 @@ namespace HydraTorrent.Views
             btnSettings.Visibility = Visibility.Visible;
 
             DrawSpeedGraph();
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Загрузка обложки для элемента очереди
+        // ────────────────────────────────────────────────────────────────
+
+        private void LoadQueueItemCover(Image imgControl, Guid gameId)
+        {
+            if (imgControl == null || gameId == Guid.Empty) return;
+
+            // ✅ Проверяем кэш сначала
+            if (_coverCache.TryGetValue(gameId, out var cachedImage))
+            {
+                imgControl.Source = cachedImage;
+                return;
+            }
+
+            // ✅ Загружаем обложку
+            try
+            {
+                var game = PlayniteApi.Database.Games.Get(gameId);
+                if (game == null)
+                {
+                    SetPlaceholderIcon(imgControl);
+                    return;
+                }
+
+                string imageFileName = null;
+
+                if (!string.IsNullOrEmpty(game.CoverImage))
+                {
+                    imageFileName = game.CoverImage;
+                }
+                else if (!string.IsNullOrEmpty(game.BackgroundImage))
+                {
+                    imageFileName = game.BackgroundImage;
+                }
+
+                if (string.IsNullOrEmpty(imageFileName))
+                {
+                    SetPlaceholderIcon(imgControl);
+                    return;
+                }
+
+                // Строим путь к файлу
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string libraryFilesDir = System.IO.Path.Combine(appData, "Playnite", "library", "files");
+                string fullImagePath;
+
+                if (imageFileName.Contains("\\"))
+                {
+                    fullImagePath = System.IO.Path.Combine(libraryFilesDir, imageFileName);
+                }
+                else
+                {
+                    string gameFolder = System.IO.Path.Combine(libraryFilesDir, gameId.ToString());
+                    fullImagePath = System.IO.Path.Combine(gameFolder, imageFileName);
+                }
+
+                if (System.IO.File.Exists(fullImagePath))
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(fullImagePath, UriKind.Absolute);
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.DecodePixelWidth = 100; // ✅ Оптимизация: не грузим полное разрешение
+                    bitmap.EndInit();
+                    bitmap.Freeze(); // ✅ Делаем доступным для любого потока
+
+                    _coverCache[gameId] = bitmap;
+                    imgControl.Source = bitmap;
+                }
+                else
+                {
+                    SetPlaceholderIcon(imgControl);
+                }
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Debug($"Не удалось загрузить обложку: {ex.Message}");
+                SetPlaceholderIcon(imgControl);
+            }
+        }
+
+        private void SetPlaceholderIcon(Image imgControl)
+        {
+            // ✅ Создаём заглушку с иконкой геймпада программно
+            var drawingVisual = new DrawingVisual();
+            using (var context = drawingVisual.RenderOpen())
+            {
+                // Серый фон
+                context.DrawRectangle(new SolidColorBrush(Color.FromRgb(60, 60, 60)), null, new Rect(0, 0, 50, 50));
+
+                // Иконка геймпада (Path geometry)
+                var gamepadGeometry = Geometry.Parse("M32 18c-7.7 0-14 6.3-14 14s6.3 14 14 14 14-6.3 14-14-6.3-14-14-14zm0 26c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12zm-6-12h12v-2H26v2zm6-6h2v2h-2V26z");
+                context.DrawGeometry(Brushes.White, null, gamepadGeometry);
+            }
+
+            var rtb = new RenderTargetBitmap(50, 50, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(drawingVisual);
+
+            imgControl.Source = rtb;
+        }
+
+        private T FindVisualChild<T>(DependencyObject parent, string name) where T : FrameworkElement
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T frameworkElement && frameworkElement.Name == name)
+                {
+                    return frameworkElement;
+                }
+
+                var childOfChild = FindVisualChild<T>(child, name);
+                if (childOfChild != null)
+                {
+                    return childOfChild;
+                }
+            }
+            return null;
+        }
+
+        // ✅ Метод с повторными попытками для загрузки обложек        
+        private async void LoadQueueCoversWithRetry(List<TorrentResult> queuedGames, int attempt)
+        {
+            if (attempt >= 3) return;
+
+            await Task.Delay(150 * (attempt + 1));
+            
+            _ = Dispatcher.InvokeAsync(() =>
+            {
+                bool allLoaded = true;
+                int loadedCount = 0;
+
+                foreach (var item in queuedGames)
+                {
+                    var container = lstQueue.ItemContainerGenerator.ContainerFromItem(item) as ContentPresenter;
+                    if (container == null)
+                    {
+                        allLoaded = false;
+                        continue;
+                    }
+
+                    var imgControl = FindVisualChild<Image>(container, "imgQueueCover");
+                    if (imgControl != null && item.GameId.HasValue)
+                    {
+                        if (imgControl.Source == null)
+                        {
+                            LoadQueueItemCover(imgControl, item.GameId.Value);
+                            loadedCount++;
+                        }
+                    }
+                    else
+                    {
+                        allLoaded = false;
+                    }
+                }
+
+                if (!allLoaded && attempt < 2)
+                {
+                    LoadQueueCoversWithRetry(queuedGames, attempt + 1);
+                }
+            }, DispatcherPriority.Loaded);
         }
 
         private void UpdateGameBackground(Game game)
@@ -1109,6 +1276,19 @@ namespace HydraTorrent.Views
         // Управление очередью загрузок (UI)
         // ────────────────────────────────────────────────────────────────
 
+        // ✅ Публичный метод для обновления из других классов
+        public async void RefreshQueueUI()
+        {
+            if (lstQueue == null || txtQueueEmpty == null) return;
+
+            // ✅ Ждём пока UI будет готов
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                UpdateQueueUI();
+            }, 
+            System.Windows.Threading.DispatcherPriority.Background);
+        }
+
         private void UpdateQueueUI()
         {
             if (lstQueue == null || txtQueueEmpty == null) return;
@@ -1130,6 +1310,9 @@ namespace HydraTorrent.Views
 
                 lstQueue.ItemsSource = queuedGames;
                 txtQueueEmpty.Visibility = queuedGames.Any() ? Visibility.Collapsed : Visibility.Visible;
+
+                // ✅ ЗАГРУЖАЕМ ОБЛОЖКИ С ПОВТОРНЫМИ ПОПЫТКАМИ
+                LoadQueueCoversWithRetry(queuedGames, 0);
             }
         }
 
