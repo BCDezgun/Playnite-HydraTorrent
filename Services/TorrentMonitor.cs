@@ -239,9 +239,12 @@ namespace HydraTorrent.Services
                 Progress = progressPercent,
                 Status = dynamicName,
                 DownloadSpeed = torrent.DownloadSpeed,
+                UploadSpeed = torrent.UploadSpeed,
                 TotalSize = torrent.TotalSize ?? 0,
                 DownloadedSize = torrent.Downloaded ?? 0,
-                ETA = torrent.EstimatedTime
+                ETA = torrent.EstimatedTime,
+                Seeds = torrent.TotalSeeds,
+                Peers = torrent.TotalLeechers
             };
 
             // Обновляем UI, если окно открыто

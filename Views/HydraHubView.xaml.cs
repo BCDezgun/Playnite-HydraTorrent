@@ -31,13 +31,18 @@ namespace HydraTorrent.Views
 
         private DispatcherTimer _uiRefreshTimer;
         private long _maxSpeedSeen = 0;
+        private long _maxUploadSpeedSeen = 0;
+        private bool _maxSpeedIsInKbps = false;
+        private bool _maxUploadSpeedIsInKbps = false;
         private Guid _activeGameId = Guid.Empty;
         private string _currentTorrentHash = null;
         private bool _isPaused = false;
-        private Guid _lastActiveGameId = Guid.Empty;  // ✅ Запоминаем последнюю активную игру
+        private Guid _lastActiveGameId = Guid.Empty;
 
-        private readonly Queue<long> _speedHistory = new Queue<long>(); // последние 15 скоростей (байты/с)
-        private long _graphMaxSpeed = 1; // текущий максимум для масштаба (минимум 1, чтобы не делить на 0)
+        private readonly Queue<long> _speedHistory = new Queue<long>();
+        private long _graphMaxSpeed = 1;
+        private readonly Queue<long> _uploadHistory = new Queue<long>();
+        private long _uploadMaxSpeed = 1;
 
         private readonly Dictionary<Guid, BitmapImage> _coverCache = new Dictionary<Guid, BitmapImage>();
 
@@ -243,7 +248,9 @@ namespace HydraTorrent.Views
                         PlayniteApi.Database.Games.Get(_activeGameId))?.TorrentHash;
 
                     _speedHistory.Clear();
+                    _uploadHistory.Clear();
                     _graphMaxSpeed = 1;
+                    _uploadMaxSpeed = 1;
                     _maxSpeedSeen = 0;
                 }
 
@@ -285,20 +292,27 @@ namespace HydraTorrent.Views
             {
                 // Полная очистка UI после удаления или отсутствия загрузки
                 txtCurrentGameName.Text = "";
-                lblCurrentSpeed.Text = "0 Мбит/с";
-                lblMaxSpeed.Text = "0 Мбит/с";
+                lblCurrentSpeed.Text = "0 Кбит/с";
+                lblMaxSpeed.Text = "0 Кбит/с";
+                lblCurrentUploadSpeed.Text = "0 Кбит/с";
+                lblMaxUploadSpeed.Text = "0 Кбит/с";
                 pbDownload.Value = 0;
                 lblDownloadedAmount.Text = "0 ГБ / 0 ГБ";
                 lblETA.Text = "Осталось: --:--:--";
-                SpeedGraphCanvas.Visibility = Visibility.Collapsed;
+                lblSeeds.Visibility = Visibility.Hidden;
+                lblPeers.Visibility = Visibility.Hidden;
+                if (DownloadGraphCanvas != null)
+                    DownloadGraphCanvas.Visibility = Visibility.Hidden;
+                if (UploadGraphCanvas != null)
+                    UploadGraphCanvas.Visibility = Visibility.Hidden;
 
                 if (lblLoadingStatus != null)
                 {
-                    lblLoadingStatus.Visibility = Visibility.Collapsed;
+                    lblLoadingStatus.Visibility = Visibility.Hidden;
                 }
 
-                btnPauseResume.Visibility = Visibility.Collapsed;
-                btnSettings.Visibility = Visibility.Collapsed;
+                btnPauseResume.Visibility = Visibility.Hidden;
+                btnSettings.Visibility = Visibility.Hidden;
                 txtStatus.Text = "Очередь загрузок появится здесь...";
                 _maxSpeedSeen = 0;
                 return;
@@ -308,13 +322,15 @@ namespace HydraTorrent.Views
             txtCurrentGameName.Text = game.Name?.ToUpper() ?? "ЗАГРУЗКА...";
 
             long currentSpeedBytes = status.DownloadSpeed;
-            if (currentSpeedBytes > _maxSpeedSeen) _maxSpeedSeen = currentSpeedBytes;
-
+            if (currentSpeedBytes > _maxSpeedSeen)
+            {
+                _maxSpeedSeen = currentSpeedBytes;
+                _maxSpeedIsInKbps = (currentSpeedBytes * 8.0) < (1024 * 1024);
+            }
             lblCurrentSpeed.Text = FormatSpeed(currentSpeedBytes);
             lblMaxSpeed.Text = FormatSpeed(_maxSpeedSeen);
 
             _speedHistory.Enqueue(currentSpeedBytes);
-
             while (_speedHistory.Count > 15)
             {
                 _speedHistory.Dequeue();
@@ -324,6 +340,33 @@ namespace HydraTorrent.Views
             {
                 _graphMaxSpeed = currentSpeedBytes;
             }
+
+            long currentUploadBytes = status.UploadSpeed;
+            if (currentUploadBytes > _maxUploadSpeedSeen)
+            {
+                _maxUploadSpeedSeen = currentUploadBytes;
+                _maxUploadSpeedIsInKbps = (currentUploadBytes * 8.0) < (1024 * 1024);
+            }
+            if (lblCurrentUploadSpeed != null)
+                lblCurrentUploadSpeed.Text = FormatSpeed(currentUploadBytes);
+            if (lblMaxUploadSpeed != null)
+                lblMaxUploadSpeed.Text = FormatSpeed(_maxUploadSpeedSeen);
+
+            _uploadHistory.Enqueue(currentUploadBytes);
+            while (_uploadHistory.Count > 15)
+            {
+                _uploadHistory.Dequeue();
+            }
+            if (currentUploadBytes > _uploadMaxSpeed)
+            {
+                _uploadMaxSpeed = currentUploadBytes;
+            }
+
+            // ✅ СИДЫ/ПИРЫ - ДОБАВИТЬ ЭТОТ БЛОК
+            if (lblSeeds != null && status.Seeds.HasValue)
+                lblSeeds.Text = $"Сиды: {status.Seeds.Value}";
+            if (lblPeers != null && status.Peers.HasValue)
+                lblPeers.Text = $"Пиры: {status.Peers.Value}";
 
             double uiProgress = status.Progress;
             if (uiProgress > 0 && uiProgress <= 1.0)
@@ -601,8 +644,21 @@ namespace HydraTorrent.Views
 
         private string FormatSpeed(long bytesPerSecond)
         {
-            double mbps = (bytesPerSecond * 8.0) / (1024 * 1024);
-            return $"{mbps:F1} Мбит/с";
+            // Конвертируем байты/сек в биты/сек
+            double bitsPerSecond = bytesPerSecond * 8.0;
+
+            // Если меньше 1 Мбит/с — показываем в Кбит/с
+            if (bitsPerSecond < 1024 * 1024) // < 1 Мбит/с
+            {
+                double kbps = bitsPerSecond / 1024;
+                return $"{kbps:F0} Кбит/с";
+            }
+            // Иначе показываем в Мбит/с
+            else
+            {
+                double mbps = bitsPerSecond / (1024 * 1024);
+                return $"{mbps:F1} Мбит/с";
+            }
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -1184,81 +1240,127 @@ namespace HydraTorrent.Views
 
         // ────────────────────────────────────────────────────────────────
         // Управление UI
-        // ────────────────────────────────────────────────────────────────
+        // ────────────────────────────────────────────────────────────────        
 
         private void DrawSpeedGraph()
         {
+            // ✅ Проверка: есть ли активная игра и данные
             if (_speedHistory.Count == 0 || _activeGameId == Guid.Empty)
             {
-                SpeedGraphCanvas.Visibility = Visibility.Collapsed;
-                SpeedGraphCanvas.Children.Clear();
+                if (DownloadGraphCanvas != null)
+                {
+                    DownloadGraphCanvas.Visibility = Visibility.Collapsed;
+                    DownloadGraphCanvas.Children.Clear();
+                }
+                if (UploadGraphCanvas != null)
+                {
+                    UploadGraphCanvas.Visibility = Visibility.Collapsed;
+                    UploadGraphCanvas.Children.Clear();
+                }
                 return;
             }
             else
             {
-                SpeedGraphCanvas.Visibility = Visibility.Visible;
+                if (DownloadGraphCanvas != null)
+                    DownloadGraphCanvas.Visibility = Visibility.Visible;
+                if (UploadGraphCanvas != null)
+                    UploadGraphCanvas.Visibility = Visibility.Visible;
             }
 
-            if (SpeedGraphCanvas == null || _speedHistory.Count == 0)
-            {
-                SpeedGraphCanvas?.Children.Clear();
-                return;
-            }
+            if (DownloadGraphCanvas == null || UploadGraphCanvas == null) return;
+            if (_speedHistory.Count == 0 || _uploadHistory.Count == 0) return;
 
-            SpeedGraphCanvas.Children.Clear();
+            DownloadGraphCanvas.Children.Clear();
+            UploadGraphCanvas.Children.Clear();
 
-            double canvasWidth = SpeedGraphCanvas.ActualWidth;
-            double canvasHeight = SpeedGraphCanvas.ActualHeight;
+            double downloadCanvasWidth = DownloadGraphCanvas.ActualWidth;
+            double downloadCanvasHeight = DownloadGraphCanvas.ActualHeight;
+            double uploadCanvasWidth = UploadGraphCanvas.ActualWidth;
+            double uploadCanvasHeight = UploadGraphCanvas.ActualHeight;
 
-            if (canvasWidth <= 0 || canvasHeight <= 0) return;
+            if (downloadCanvasWidth <= 0 || downloadCanvasHeight <= 0) return;
+            if (uploadCanvasWidth <= 0 || uploadCanvasHeight <= 0) return;
 
-            double barWidth = canvasWidth / 15;           // ширина одного столбика
-            double spacing = barWidth * 0.4;              // отступ между столбиками (20% ширины)
+            double barWidth = downloadCanvasWidth / 15;
+            double spacing = barWidth * 0.4;
             double barEffectiveWidth = barWidth - spacing;
 
-            // Преобразуем очередь в массив для удобства (слева — старое, справа — новое)
-            var speeds = _speedHistory.ToArray();
+            var downloadSpeeds = _speedHistory.ToArray();
+            var uploadSpeeds = _uploadHistory.ToArray();
 
-            for (int i = 0; i < speeds.Length; i++)
+            // ────────────────────────────────────────────────────────────────
+            // ✅ ВЕРХНИЙ CANVAS: График загрузки (синий, растёт снизу вверх)
+            // ────────────────────────────────────────────────────────────────
+
+            for (int i = 0; i < downloadSpeeds.Length; i++)
             {
-                long speed = speeds[i];
+                long speed = downloadSpeeds[i];
 
-                // Высота столбика (динамический масштаб)
-                double height = (speed / (double)_graphMaxSpeed) * canvasHeight * 0.85; // 85% от высоты — запас сверху
+                double height = (speed / (double)_graphMaxSpeed) * downloadCanvasHeight * 0.85;
 
-                // Минимальная высота, чтобы даже 1 Мбит/с был виден
                 if (height < 4) height = 4;
 
                 var bar = new Rectangle
                 {
                     Width = barEffectiveWidth,
                     Height = height,
-                    Fill = new SolidColorBrush(Color.FromRgb(79, 195, 247)), // #4FC3F7 — синий как в Steam
-                    RadiusX = 0, //скругление
-                    RadiusY = 0  //скругление
+                    Fill = new SolidColorBrush(Color.FromRgb(79, 195, 247)), // #4FC3F7 — синий
+                    RadiusX = 0,
+                    RadiusY = 0
                 };
 
-                // Позиция: слева направо double left = i * barWidth + spacing / 2;
-                double left = canvasWidth - (speeds.Length - i) * barWidth + spacing / 2;
+                double left = downloadCanvasWidth - (downloadSpeeds.Length - i) * barWidth + spacing / 2;
                 Canvas.SetLeft(bar, left);
-                Canvas.SetBottom(bar, 0); // столбики растут снизу вверх
+                Canvas.SetBottom(bar, 0); // ✅ Растёт от низа Canvas вверх
 
-                SpeedGraphCanvas.Children.Add(bar);
+                DownloadGraphCanvas.Children.Add(bar);
             }
 
-            // Добавляем градиент прозрачности слева (затухание)
+            // ────────────────────────────────────────────────────────────────
+            // ✅ НИЖНИЙ CANVAS: График отдачи (зелёный, растёт СВЕРХУ ВНИЗ)
+            // ────────────────────────────────────────────────────────────────
+
+            for (int i = 0; i < uploadSpeeds.Length; i++)
+            {
+                long speed = uploadSpeeds[i];
+
+                double height = (speed / (double)_uploadMaxSpeed) * uploadCanvasHeight * 0.85;
+
+                if (height < 4) height = 4;
+
+                var bar = new Rectangle
+                {
+                    Width = barEffectiveWidth,
+                    Height = height,
+                    Fill = new SolidColorBrush(Color.FromRgb(46, 204, 113)), // #2ECC71 — зелёный
+                    RadiusX = 0,
+                    RadiusY = 0
+                };
+
+                double left = uploadCanvasWidth - (uploadSpeeds.Length - i) * barWidth + spacing / 2;
+                Canvas.SetLeft(bar, left);
+                Canvas.SetTop(bar, 0); // ✅ ИСПРАВЛЕНО: Растёт от верха Canvas вниз (было SetBottom)
+
+                UploadGraphCanvas.Children.Add(bar);
+            }
+
+            // ────────────────────────────────────────────────────────────────
+            // ✅ Добавляем градиент прозрачности слева (затухание) для обоих Canvas
+            // ────────────────────────────────────────────────────────────────
+
             var mask = new LinearGradientBrush
             {
                 StartPoint = new Point(0, 0),
                 EndPoint = new Point(1, 0)
             };
 
-            mask.GradientStops.Add(new GradientStop(Colors.Transparent, 0.0));   // полностью прозрачно слева
-            mask.GradientStops.Add(new GradientStop(Colors.Transparent, 0.02));   // до 40% ширины — всё ещё прозрачно
-            mask.GradientStops.Add(new GradientStop(Colors.Black, 0.70));         // к 50% — полностью непрозрачно
-            mask.GradientStops.Add(new GradientStop(Colors.Black, 1.0));          // дальше всё видно
+            mask.GradientStops.Add(new GradientStop(Colors.Transparent, 0.0));
+            mask.GradientStops.Add(new GradientStop(Colors.Transparent, 0.02));
+            mask.GradientStops.Add(new GradientStop(Colors.Black, 0.70));
+            mask.GradientStops.Add(new GradientStop(Colors.Black, 1.0));
 
-            SpeedGraphCanvas.OpacityMask = mask;
+            DownloadGraphCanvas.OpacityMask = mask;
+            UploadGraphCanvas.OpacityMask = mask;
         }
 
         // ────────────────────────────────────────────────────────────────
