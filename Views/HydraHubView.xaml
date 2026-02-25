@@ -266,10 +266,11 @@
 
                                     <!-- Верхний Canvas: Загрузка (синий) -->
                                     <Canvas x:Name="DownloadGraphCanvas"
-            Width="180"
-            Height="60"
-            ClipToBounds="True"
-            Panel.ZIndex="1">
+                                            Width="180"
+                                            Height="60"
+                                            ClipToBounds="True"
+                                            Panel.ZIndex="1"
+                                            Visibility="Collapsed">
                                     </Canvas>
 
                                     <!-- Отступ между графиками -->
@@ -277,10 +278,11 @@
 
                                     <!-- Нижний Canvas: Отдача (зелёный) -->
                                     <Canvas x:Name="UploadGraphCanvas"
-            Width="180"
-            Height="60"
-            ClipToBounds="True"
-            Panel.ZIndex="1">
+                                            Width="180"
+                                            Height="60"
+                                            ClipToBounds="True"
+                                            Panel.ZIndex="1"
+                                            Visibility="Collapsed">
                                     </Canvas>
                                 </StackPanel>
 
@@ -310,54 +312,67 @@
                                     </Grid.RowDefinitions>
 
                                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
-                                        <!-- ✅ ЗАГРУЗКА (синий цвет) -->
-                                        <StackPanel Margin="0,0,20,0">
-                                            <TextBlock Text="Загрузка" 
-                   Foreground="#888" 
-                   FontSize="11" 
+
+                                        <!-- ✅ ЗАГРУЗКА (синий цвет) - ОБЪЕДИНЁННЫЙ КОНТЕЙНЕР -->
+                                        <StackPanel x:Name="pnlDownloadSpeed" 
+                Margin="0,0,25,0"
+                Visibility="Hidden">
+                                            <!-- ✅ По умолчанию скрыто -->
+                                            <TextBlock Text="Загрузка"
+                   Foreground="#888"
+                   FontSize="11"
                    FontWeight="Bold"/>
-                                            <TextBlock x:Name="lblCurrentSpeed" 
-                   Text="0 Мбит/с" 
-                   Foreground="#4FC3F7" 
+                                            <TextBlock x:Name="lblCurrentSpeed"
+                   Text="0 Кбит/с"
+                   Foreground="#4FC3F7"
                    FontSize="18"/>
                                         </StackPanel>
 
-                                        <StackPanel Margin="0,0,20,0">
-                                            <TextBlock Text="Макс. Скор." 
-                   Foreground="#888" 
-                   FontSize="11" 
+                                        <StackPanel x:Name="pnlDownloadMaxSpeed" 
+                Margin="0,0,25,0"
+                Visibility="Hidden">
+                                            <!-- ✅ По умолчанию скрыто -->
+                                            <TextBlock Text="Макс. Скор."
+                   Foreground="#888"
+                   FontSize="11"
                    FontWeight="Bold"/>
-                                            <TextBlock x:Name="lblMaxSpeed" 
-                   Text="0 Мбит/с" 
-                   Foreground="#4FC3F7" 
+                                            <TextBlock x:Name="lblMaxSpeed"
+                   Text="0 Кбит/с"
+                   Foreground="#4FC3F7"
                    FontSize="18"/>
                                         </StackPanel>
 
-                                        <!-- ✅ ОТДАЧА (зелёный цвет) -->
-                                        <StackPanel Margin="0,0,20,0">
-                                            <TextBlock Text="Отдача" 
-                   Foreground="#888" 
-                   FontSize="11" 
+                                        <!-- ✅ ОТДАЧА (зелёный цвет) - ОБЪЕДИНЁННЫЙ КОНТЕЙНЕР -->
+                                        <StackPanel x:Name="pnlUploadSpeed" 
+                Margin="0,0,25,0"
+                Visibility="Hidden">
+                                            <!-- ✅ По умолчанию скрыто -->
+                                            <TextBlock Text="Отдача"
+                   Foreground="#888"
+                   FontSize="11"
                    FontWeight="Bold"/>
-                                            <TextBlock x:Name="lblCurrentUploadSpeed" 
-                   Text="0 Мбит/с" 
-                   Foreground="#2ECC71" 
+                                            <TextBlock x:Name="lblCurrentUploadSpeed"
+                   Text="0 Кбит/с"
+                   Foreground="#2ECC71"
                    FontSize="18"/>
                                         </StackPanel>
 
-                                        <StackPanel>
-                                            <TextBlock Text="Макс. Скор." 
-                   Foreground="#888" 
-                   FontSize="11" 
+                                        <StackPanel x:Name="pnlUploadMaxSpeed" 
+                Margin="0,0,0,0"
+                Visibility="Hidden">
+                                            <!-- ✅ По умолчанию скрыто -->
+                                            <TextBlock Text="Макс. Скор."
+                   Foreground="#888"
+                   FontSize="11"
                    FontWeight="Bold"/>
-                                            <TextBlock x:Name="lblMaxUploadSpeed" 
-                   Text="0 Мбит/с" 
-                   Foreground="#2ECC71" 
+                                            <TextBlock x:Name="lblMaxUploadSpeed"
+                   Text="0 Кбит/с"
+                   Foreground="#2ECC71"
                    FontSize="18"/>
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="1">
+                                    <StackPanel Grid.Row="1" x:Name="pnlProgressInfo">
                                         <ProgressBar x:Name="pbDownload"
                                                      Minimum="0"
                                                      Maximum="100"
@@ -366,7 +381,8 @@
                                                      Margin="0,8,0,8"
                                                      Foreground="#2ECC71"
                                                      Background="#333333"
-                                                     BorderThickness="0"/>
+                                                     BorderThickness="0"
+                                                     Visibility="Hidden"/>
 
                                         <Grid Margin="0,8,0,0">
                                             <TextBlock x:Name="lblDownloadedAmount" Text="0 ГБ / 0 ГБ" 
@@ -376,38 +392,43 @@
                                         </Grid>
                                     </StackPanel>
                                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,15,0,0">
-    <!-- Сиды -->
-    <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
-        <Path Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z" 
-              Fill="#2ECC71" 
-              Stretch="Uniform" 
-              Width="14" 
-              Height="14"
-              VerticalAlignment="Center"
-              Margin="0,0,5,0"/>
-        <TextBlock x:Name="lblSeeds" 
-                   Text="Сиды: 0" 
-                   Foreground="#2ECC71" 
-                   FontSize="12"
-                   VerticalAlignment="Center"/>
-    </StackPanel>
-    
-    <!-- Пиры -->
-    <StackPanel Orientation="Horizontal">
-        <Path Data="M16,11C17.66,11 19,9.66 19,8C19,6.34 17.66,5 16,5C14.34,5 13,6.34 13,8C13,9.66 14.34,11 16,11M8,11C9.66,11 11,9.66 11,8C11,6.34 9.66,5 8,5C6.34,5 5,6.34 5,8C5,9.66 6.34,11 8,11M16,13C13.33,13 8,14.33 8,17V19H24V17C24,14.33 18.67,13 16,13M8,13C5.33,13 0,14.33 0,17V19H6V17C6,14.33 10.67,13 8,13Z" 
-              Fill="#4FC3F7" 
-              Stretch="Uniform" 
-              Width="14" 
-              Height="14"
-              VerticalAlignment="Center"
-              Margin="0,0,5,0"/>
-        <TextBlock x:Name="lblPeers" 
-                   Text="Пиры: 0" 
-                   Foreground="#4FC3F7" 
-                   FontSize="12"
-                   VerticalAlignment="Center"/>
-    </StackPanel>
-</StackPanel>
+                                        <!-- Сиды -->
+                                        <StackPanel x:Name="pnlSeedsPeers" 
+                                                    Orientation="Horizontal" 
+                                                    Margin="0,0,20,0" 
+                                                    Visibility="Hidden">
+                                            <Path Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z" 
+                                                  Fill="#2ECC71" 
+                                                  Stretch="Uniform" 
+                                                  Width="14" 
+                                                  Height="14"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,5,0"/>
+                                            <TextBlock x:Name="lblSeeds"
+                                                       Text="Сиды: 0"
+                                                       Foreground="#2ECC71"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Пиры -->
+                                        <StackPanel x:Name="pnlPeers"
+                                                    Orientation="Horizontal" 
+                                                    Visibility="Hidden">
+                                            <Path Data="M16,11C17.66,11 19,9.66 19,8C19,6.34 17.66,5 16,5C14.34,5 13,6.34 13,8C13,9.66 14.34,11 16,11M8,11C9.66,11 11,9.66 11,8C11,6.34 9.66,5 8,5C6.34,5 5,6.34 5,8C5,9.66 6.34,11 8,11M16,13C13.33,13 8,14.33 8,17V19H24V17C24,14.33 18.67,13 16,13M8,13C5.33,13 0,14.33 0,17V19H6V17C6,14.33 10.67,13 8,13Z" 
+                                                  Fill="#4FC3F7" 
+                                                  Stretch="Uniform" 
+                                                  Width="14" 
+                                                  Height="14"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,5,0"/>
+                                            <TextBlock x:Name="lblPeers"
+                                                       Text="Пиры: 0"
+                                                       Foreground="#4FC3F7"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
 
                                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
                                         <Button x:Name="btnSettings" 
@@ -415,7 +436,8 @@
                                                 Background="#22FFFFFF" 
                                                 Margin="0,0,10,0" 
                                                 Cursor="Hand" 
-                                                Click="btnSettings_Click">
+                                                Click="btnSettings_Click"
+                                                Visibility="Hidden">
                                             <Button.Template>
                                                 <ControlTemplate TargetType="Button">
                                                     <Border Background="{TemplateBinding Background}" CornerRadius="20">
@@ -439,10 +461,11 @@
                                         </Button>
 
                                         <Button x:Name="btnPauseResume" 
-        Width="40" Height="40" 
-        Click="BtnPauseResume_Click" 
-        Background="#2ECC71" 
-        Cursor="Hand">
+                                                Width="40" Height="40" 
+                                                Click="BtnPauseResume_Click" 
+                                                Background="#2ECC71" 
+                                                Cursor="Hand"
+                                                Visibility="Hidden">
                                             <Button.Template>
                                                 <ControlTemplate TargetType="Button">
                                                     <Border Background="{TemplateBinding Background}" CornerRadius="20">

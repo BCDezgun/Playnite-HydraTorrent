@@ -112,6 +112,7 @@ namespace HydraTorrent.Views
             DataContext = this;
             InitDownloadManager();
             UpdateQueueUI();
+            UpdateDownloadUI(null, null);
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -277,10 +278,11 @@ namespace HydraTorrent.Views
                     _graphMaxSpeed = 1;
                     _uploadMaxSpeed = 1;
                     _maxSpeedSeen = 0;
-                    _maxUploadSpeedSeen = 0;
-                    UpdateDownloadUI(null, null);
-                    DrawSpeedGraph();
+                    _maxUploadSpeedSeen = 0;                    
                 }
+
+                UpdateDownloadUI(null, null);
+                DrawSpeedGraph();
             }
         }
 
@@ -295,41 +297,87 @@ namespace HydraTorrent.Views
             {
                 // Полная очистка UI после удаления или отсутствия загрузки
                 txtCurrentGameName.Text = "";
-                lblCurrentSpeed.Text = "0 Кбит/с";
-                lblMaxSpeed.Text = "0 Кбит/с";
-                lblCurrentUploadSpeed.Text = "0 Кбит/с";
-                lblMaxUploadSpeed.Text = "0 Кбит/с";
-                pbDownload.Value = 0;
-                lblDownloadedAmount.Text = "0 ГБ / 0 ГБ";
-                lblETA.Text = "Осталось: --:--:--";
-                lblSeeds.Visibility = Visibility.Hidden;
-                lblPeers.Visibility = Visibility.Hidden;
-                if (DownloadGraphCanvas != null)
-                    DownloadGraphCanvas.Visibility = Visibility.Hidden;
-                if (UploadGraphCanvas != null)
-                    UploadGraphCanvas.Visibility = Visibility.Hidden;
 
+                // ✅ СКРЫВАЕМ КОНТЕЙНЕРЫ СКОРОСТЕЙ
+                if (pnlDownloadSpeed != null)
+                    pnlDownloadSpeed.Visibility = Visibility.Hidden;
+                if (pnlDownloadMaxSpeed != null)
+                    pnlDownloadMaxSpeed.Visibility = Visibility.Hidden;
+                if (pnlUploadSpeed != null)
+                    pnlUploadSpeed.Visibility = Visibility.Hidden;
+                if (pnlUploadMaxSpeed != null)
+                    pnlUploadMaxSpeed.Visibility = Visibility.Hidden;
+
+                // ✅ СКРЫВАЕМ ПРОГРЕСС БАР И ИНФОРМАЦИЮ
+                if (pnlProgressInfo != null)
+                    pnlProgressInfo.Visibility = Visibility.Hidden;
+                if (pbDownload != null)
+                    pbDownload.Visibility = Visibility.Hidden;
+                if (lblDownloadedAmount != null)
+                    lblDownloadedAmount.Visibility = Visibility.Hidden;
+                if (lblETA != null)
+                    lblETA.Visibility = Visibility.Hidden;
+
+                // ✅ СКРЫВАЕМ СИДЫ/ПИРЫ
+                if (pnlSeedsPeers != null)
+                    pnlSeedsPeers.Visibility = Visibility.Hidden;
+                if (pnlPeers != null)
+                    pnlPeers.Visibility = Visibility.Hidden;
+                if (lblSeeds != null)
+                    lblSeeds.Visibility = Visibility.Hidden;
+                if (lblPeers != null)
+                    lblPeers.Visibility = Visibility.Hidden;
+
+                // ✅ СКРЫВАЕМ ГРАФИКИ СКОРОСТИ
+                if (DownloadGraphCanvas != null)
+                    DownloadGraphCanvas.Visibility = Visibility.Collapsed;
+                if (UploadGraphCanvas != null)
+                    UploadGraphCanvas.Visibility = Visibility.Collapsed;
                 if (lblLoadingStatus != null)
                 {
                     lblLoadingStatus.Visibility = Visibility.Hidden;
                 }
-
                 btnPauseResume.Visibility = Visibility.Hidden;
                 btnSettings.Visibility = Visibility.Hidden;
                 txtStatus.Text = "Очередь загрузок появится здесь...";
                 _maxSpeedSeen = 0;
                 return;
             }
-
+            
             // Обычное обновление при наличии статуса
             txtCurrentGameName.Text = game.Name?.ToUpper() ?? "ЗАГРУЗКА...";
 
+            // ✅ ПОКАЗЫВАЕМ КОНТЕЙНЕРЫ СКОРОСТЕЙ
+            if (pnlDownloadSpeed != null)
+                pnlDownloadSpeed.Visibility = Visibility.Visible;
+            if (pnlDownloadMaxSpeed != null)
+                pnlDownloadMaxSpeed.Visibility = Visibility.Visible;
+            if (pnlUploadSpeed != null)
+                pnlUploadSpeed.Visibility = Visibility.Visible;
+            if (pnlUploadMaxSpeed != null)
+                pnlUploadMaxSpeed.Visibility = Visibility.Visible;
+
+            // ✅ ПОКАЗЫВАЕМ ПРОГРЕСС БАР И ИНФОРМАЦИЮ
+            if (pnlProgressInfo != null)
+                pnlProgressInfo.Visibility = Visibility.Visible;
+            if (pbDownload != null)
+                pbDownload.Visibility = Visibility.Visible;
+            if (lblDownloadedAmount != null)
+                lblDownloadedAmount.Visibility = Visibility.Visible;
+            if (lblETA != null)
+                lblETA.Visibility = Visibility.Visible;
+
+            // ✅ ПОКАЗЫВАЕМ СИДЫ/ПИРЫ
+            if (pnlSeedsPeers != null)
+                pnlSeedsPeers.Visibility = Visibility.Visible;
+            if (pnlPeers != null)
+                pnlPeers.Visibility = Visibility.Visible;
             if (lblSeeds != null)
                 lblSeeds.Visibility = Visibility.Visible;
             if (lblPeers != null)
                 lblPeers.Visibility = Visibility.Visible;
 
-            long currentSpeedBytes = status.DownloadSpeed;
+            long currentSpeedBytes = status.DownloadSpeed;            
             if (currentSpeedBytes > _maxSpeedSeen)
             {
                 _maxSpeedSeen = currentSpeedBytes;
