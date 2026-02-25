@@ -171,7 +171,59 @@ namespace HydraTorrent
             // ✅ СНАЧАЛА пересчитываем позиции по текущему порядку списка!
             RecalculateQueuePositions();
 
-            // ✅ Ищем следующую игру по QueuePosition
+            // ────────────────────────────────────────────────────────────────
+            // ✅ ПРИОРИТЕТ 1: Ищем игру со статусом "Paused" (была активна)
+            // ────────────────────────────────────────────────────────────────
+            var pausedGame = DownloadQueue
+                .FirstOrDefault(q => q.QueueStatus == "Paused");
+
+            if (pausedGame != null && pausedGame.GameId.HasValue)
+            {
+                logger.Info($"Найдена игра на паузе: {pausedGame.Name} — возобновляем");
+
+                pausedGame.QueueStatus = "Downloading";
+                SaveQueue();
+
+                // Возобновляем торрент в qBittorrent
+                var qb = settings.Settings;
+                var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+                using (var client = new QBittorrentClient(url))
+                {
+                    await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+                    await client.ResumeAsync(pausedGame.TorrentHash);
+                }
+
+                // Обновляем игру в БД
+                var game = PlayniteApi.Database.Games.Get(pausedGame.GameId.Value);
+                if (game != null)
+                {
+                    game.IsInstalling = true;
+
+                    if (string.IsNullOrEmpty(pausedGame.GameName))
+                    {
+                        pausedGame.GameName = game.Name;
+                        SaveQueue();
+                    }
+
+                    PlayniteApi.Database.Games.Update(game);
+                }
+
+                PlayniteApi.Notifications.Add(new NotificationMessage(
+                    "HydraTorrent",
+                    $"Возобновлена загрузка: {pausedGame.Name}",
+                    NotificationType.Info));
+
+                if (HydraHubView.CurrentInstance != null)
+                {
+                    HydraHubView.CurrentInstance.RefreshQueueUI();
+                }
+
+                return; // ✅ Возвращаем — нашли игру!
+            }
+
+            // ────────────────────────────────────────────────────────────────
+            // ✅ ПРИОРИТЕТ 2: Если нет paused, ищем следующую "Queued"
+            // ────────────────────────────────────────────────────────────────
             var nextQueued = DownloadQueue
                 .Where(q => q.QueueStatus == "Queued")
                 .OrderBy(q => q.QueuePosition)
@@ -203,33 +255,38 @@ namespace HydraTorrent
             SaveQueue();
 
             // Возобновляем торрент в qBittorrent
-            var qb = settings.Settings;
-            var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
-            using (var client = new QBittorrentClient(url))
+            var qb2 = settings.Settings;
+            var url2 = new Uri($"http://{qb2.QBittorrentHost}:{qb2.QBittorrentPort}");
+            using (var client2 = new QBittorrentClient(url2))
             {
-                await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
-                await client.ResumeAsync(nextQueued.TorrentHash);
+                await client2.LoginAsync(qb2.QBittorrentUsername, qb2.QBittorrentPassword ?? "");
+                await client2.ResumeAsync(nextQueued.TorrentHash);
             }
 
             // Обновляем игру в БД
-            var game = PlayniteApi.Database.Games.Get(nextQueued.GameId.Value);
-            if (game != null)
+            var game2 = PlayniteApi.Database.Games.Get(nextQueued.GameId.Value);
+            if (game2 != null)
             {
-                game.IsInstalling = true;                
-                
+                game2.IsInstalling = true;
+
                 if (string.IsNullOrEmpty(nextQueued.GameName))
                 {
-                    nextQueued.GameName = game.Name;
+                    nextQueued.GameName = game2.Name;
                     SaveQueue();
                 }
 
-                PlayniteApi.Database.Games.Update(game);
+                PlayniteApi.Database.Games.Update(game2);
             }
 
             PlayniteApi.Notifications.Add(new NotificationMessage(
                 "HydraTorrent",
                 $"Начата загрузка: {nextQueued.Name}",
                 NotificationType.Info));
+
+            if (HydraHubView.CurrentInstance != null)
+            {
+                HydraHubView.CurrentInstance.RefreshQueueUI();
+            }
         }
 
         public void RecalculateQueuePositions()

@@ -131,20 +131,22 @@ namespace HydraTorrent.Views
             // ────────────────────────────────────────────────────────────────
             // ✅ ПРОВЕРКА: Актуальна ли ещё запомненная игра?
             // ────────────────────────────────────────────────────────────────
-
             if (_lastActiveGameId != Guid.Empty)
             {
                 // Проверяем, всё ещё ли эта игра в статусе Downloading или Paused
                 var queueItem = _plugin.DownloadQueue.FirstOrDefault(q => q.GameId == _lastActiveGameId);
 
+                // ✅ ИГРА УДАЛЕНА ИЛИ ЗАВЕРШЕНА — сбрасываем запомненную
                 if (queueItem == null || queueItem.QueueStatus == "Completed")
                 {
-                    // Игра завершена или удалена — сбрасываем запомненную
                     _lastActiveGameId = Guid.Empty;
+                    _activeGameId = Guid.Empty;
+                    _currentTorrentHash = null;
+                    // ✅ НЕ возвращаем здесь! Даём коду ниже найти новую активную игру
                 }
+                // ✅ ИГРА ВСЁ ЕЩЁ АКТИВНА — продолжаем показывать её
                 else if (queueItem.QueueStatus == "Downloading" || queueItem.QueueStatus == "Paused")
                 {
-                    // Игра всё ещё активна — продолжаем показывать её
                     var lastActiveStatus = HydraTorrent.LiveStatus.TryGetValue(_lastActiveGameId, out var s) ? s : null;
                     if (lastActiveStatus != null)
                     {
@@ -154,13 +156,16 @@ namespace HydraTorrent.Views
                             UpdateDownloadUI(game, lastActiveStatus);
                             UpdatePauseButtonState();
                             DrawSpeedGraph();
-                            return;
+                            return; // ✅ Возвращаем только если игра действительно существует
                         }
                     }
+                    // ✅ Если статус есть но игры нет — сбрасываем и идём дальше
+                    _lastActiveGameId = Guid.Empty;
+                    _activeGameId = Guid.Empty;
                 }
+                // ✅ ИГРА В ОЧЕРЕДИ НО НЕ АКТИВНА — сбрасываем
                 else
                 {
-                    // Игра в очереди но не активна — сбрасываем
                     _lastActiveGameId = Guid.Empty;
                 }
             }
@@ -168,7 +173,6 @@ namespace HydraTorrent.Views
             // ────────────────────────────────────────────────────────────────
             // ✅ ПРИОРИТЕТ 2: Ищем активную загрузку из ОЧЕРЕДИ
             // ────────────────────────────────────────────────────────────────
-
             var activeFromQueue = _plugin.DownloadQueue
                 .FirstOrDefault(q => q.QueueStatus == "Downloading");
 
@@ -189,7 +193,6 @@ namespace HydraTorrent.Views
                 // ────────────────────────────────────────────────────────────────
                 // ✅ ПРИОРИТЕТ 3: Если нет активных, ищем паузу из ОЧЕРЕДИ
                 // ────────────────────────────────────────────────────────────────
-
                 var pausedFromQueue = _plugin.DownloadQueue
                     .Where(q => q.QueueStatus == "Paused")
                     .OrderBy(q => q.QueuePosition)
@@ -204,7 +207,6 @@ namespace HydraTorrent.Views
                     // ────────────────────────────────────────────────────────────────
                     // ✅ ПРИОРИТЕТ 4: Если ничего нет в очереди, смотрим LiveStatus
                     // ────────────────────────────────────────────────────────────────
-
                     var activeDownload = HydraTorrent.LiveStatus
                         .Where(x =>
                             x.Value.Status.Contains("Загрузка") &&
@@ -238,7 +240,6 @@ namespace HydraTorrent.Views
             // ────────────────────────────────────────────────────────────────
             // ✅ Обновляем UI только если нашли игру
             // ────────────────────────────────────────────────────────────────
-
             if (targetGameId != Guid.Empty)
             {
                 if (_activeGameId != targetGameId)
@@ -246,12 +247,12 @@ namespace HydraTorrent.Views
                     _activeGameId = targetGameId;
                     _currentTorrentHash = _plugin.GetHydraData(
                         PlayniteApi.Database.Games.Get(_activeGameId))?.TorrentHash;
-
                     _speedHistory.Clear();
                     _uploadHistory.Clear();
                     _graphMaxSpeed = 1;
                     _uploadMaxSpeed = 1;
                     _maxSpeedSeen = 0;
+                    _maxUploadSpeedSeen = 0;
                 }
 
                 var status = HydraTorrent.LiveStatus.TryGetValue(_activeGameId, out var s) ? s : null;
@@ -272,9 +273,11 @@ namespace HydraTorrent.Views
                     _activeGameId = Guid.Empty;
                     _currentTorrentHash = null;
                     _speedHistory.Clear();
+                    _uploadHistory.Clear();
                     _graphMaxSpeed = 1;
+                    _uploadMaxSpeed = 1;
                     _maxSpeedSeen = 0;
-
+                    _maxUploadSpeedSeen = 0;
                     UpdateDownloadUI(null, null);
                     DrawSpeedGraph();
                 }
@@ -320,6 +323,11 @@ namespace HydraTorrent.Views
 
             // Обычное обновление при наличии статуса
             txtCurrentGameName.Text = game.Name?.ToUpper() ?? "ЗАГРУЗКА...";
+
+            if (lblSeeds != null)
+                lblSeeds.Visibility = Visibility.Visible;
+            if (lblPeers != null)
+                lblPeers.Visibility = Visibility.Visible;
 
             long currentSpeedBytes = status.DownloadSpeed;
             if (currentSpeedBytes > _maxSpeedSeen)
@@ -1387,8 +1395,10 @@ namespace HydraTorrent.Views
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 UpdateQueueUI();
-            }, 
-            System.Windows.Threading.DispatcherPriority.Background);
+
+                // ✅ ФОРСИРУЕМ обновление таймера (сбрасываем _activeGameId чтобы он пересчитался)
+                // Это поможет если активная игра изменилась пока View был закрыт
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void UpdateQueueUI()
@@ -1569,9 +1579,22 @@ namespace HydraTorrent.Views
                         _plugin.DownloadQueue.Remove(queueItem);
                         _plugin.RecalculateQueuePositions();
                         _plugin.SaveQueue();
+
+                        if (_coverCache.ContainsKey(item.GameId.Value))
+                        {
+                            _coverCache.Remove(item.GameId.Value);
+                        }
                     }
 
                     HydraTorrent.LiveStatus.Remove(item.GameId.Value);
+
+                    // ✅ ОБНОВЛЯЕМ UI СРАЗУ
+                    UpdateQueueUI();
+
+                    // ✅ АВТОСТАРТ СЛЕДУЮЩЕЙ В ОЧЕРЕДИ (ЭТОГО НЕ ХВАТАЛО!)
+                    await _plugin.StartNextInQueueAsync();
+
+                    // ✅ ОБНОВЛЯЕМ UI ПОСЛЕ АВТОСТАРТА
                     UpdateQueueUI();
 
                     PlayniteApi.Notifications.Add(new NotificationMessage(

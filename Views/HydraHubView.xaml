@@ -43,7 +43,7 @@
     </UserControl.Resources>
 
     <DockPanel LastChildFill="True">
-        <Border DockPanel.Dock="Top" Background="Transparent" Height="52" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Background="Transparent" Height="52" BorderThickness="0,0,0,1" Cursor="Arrow">
             <Border.BorderBrush>
                 <SolidColorBrush Color="Gray" Opacity="0.2"/>
             </Border.BorderBrush>
@@ -156,7 +156,7 @@
                         </ListView>
 
                         <Border Grid.Column="1" Margin="15,0,0,0" Padding="5" Background="Transparent" 
-                                BorderThickness="0" VerticalAlignment="Top">
+                                BorderThickness="0" VerticalAlignment="Top" Cursor="Arrow">
                             <StackPanel>
                                 <TextBlock Text="ФИЛЬТРЫ ПОИСКА" Foreground="#888" FontSize="11" FontWeight="Bold" 
                                            Margin="0,0,0,15" Opacity="0.7"/>
@@ -218,7 +218,7 @@
                                 </ComboBox>
 
                                 <TextBlock Text="Дополнительные фильтры появятся здесь..." Foreground="#444" 
-                                           Margin="0,20,0,0" TextWrapping="Wrap" FontSize="11" FontStyle="Italic"/>
+                                           Margin="0,20,0,0" TextWrapping="Wrap" FontSize="11" FontStyle="Italic" Cursor="Arrow"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -290,9 +290,9 @@
                                                Foreground="#2ECC71"
                                                FontWeight="Bold"
                                                FontSize="12"
-                                               Margin="0,0,0,5"/>
+                                               Margin="0,0,0,5" Cursor="Arrow"/>
                                     <TextBlock x:Name="txtCurrentGameName" Text="" Foreground="White" 
-                                               FontSize="36" FontWeight="Bold">
+                                               FontSize="36" FontWeight="Bold" Cursor="Arrow">
                                         <TextBlock.Effect>
                                             <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.9"/>
                                         </TextBlock.Effect>
@@ -477,7 +477,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="1" Margin="10,0,10,10" Background="Transparent" CornerRadius="8">
+                    <Border Grid.Row="1" Margin="10,0,10,10" Background="Transparent" CornerRadius="8" Cursor="Arrow">
                         <Grid>
                             <!-- Заголовок очереди -->
                             <TextBlock Text="📦 ОЧЕРЕДЬ ЗАГРУЗОК" 
@@ -485,7 +485,7 @@
                    FontSize="12" 
                    FontWeight="Bold" 
                    Margin="15,10,0,0"
-                   VerticalAlignment="Top"/>
+                   VerticalAlignment="Top" Cursor="Arrow"/>
 
                             <!-- Список очереди -->
                             <ScrollViewer VerticalScrollBarVisibility="Auto" 
@@ -708,7 +708,7 @@
                    VerticalAlignment="Center" 
                    HorizontalAlignment="Center" 
                    Foreground="#60FFFFFF" 
-                   FontSize="14"/>
+                   FontSize="14" Cursor="Arrow"/>
                         </Grid>
                     </Border>
                 </Grid>
