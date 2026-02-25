@@ -303,7 +303,7 @@
                                         </StackPanel>
                                         <StackPanel>
                                             <TextBlock Text="МАКС. СКОР." Foreground="#888" FontSize="11" FontWeight="Bold"/>
-                                            <TextBlock x:Name="lblMaxSpeed" Text="0 Мбит/сс" Foreground="White" FontSize="18"/>
+                                            <TextBlock x:Name="lblMaxSpeed" Text="0 Мбит/с" Foreground="White" FontSize="18"/>
                                         </StackPanel>
                                     </StackPanel>
 
@@ -394,8 +394,7 @@
                         </Grid>
                     </Border>
 
-                    <!-- ЗАМЕНИТЬ ЭТОТ БЛОК -->
-                    <Border Grid.Row="1" Margin="10,0,10,10" Background="#1A1A1A" CornerRadius="8">
+                    <Border Grid.Row="1" Margin="10,0,10,10" Background="Transparent" CornerRadius="8">
                         <Grid>
                             <!-- Заголовок очереди -->
                             <TextBlock Text="📦 ОЧЕРЕДЬ ЗАГРУЗОК" 
@@ -413,11 +412,12 @@
                           Foreground="White">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="#252525" 
+                                            <!-- ✅ Добавим полупрозрачный фон для каждого элемента очереди -->
+                                            <Border Background="#20FFFFFF" 
                                 Margin="10,5" 
                                 Padding="15,10" 
                                 CornerRadius="6"
-                                BorderBrush="#333"
+                                BorderBrush="#30FFFFFF"
                                 BorderThickness="1">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -434,13 +434,13 @@
                                                TextTrimming="CharacterEllipsis"/>
                                                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                                                             <TextBlock Text="{Binding Size}" 
-                                                   Foreground="#888" 
+                                                   Foreground="#AAA" 
                                                    FontSize="11"/>
                                                             <TextBlock Text=" • " 
-                                                   Foreground="#888" 
+                                                   Foreground="#AAA" 
                                                    FontSize="11" 
                                                    Margin="5,0"/>
-                                                            <TextBlock Foreground="#888" 
+                                                            <TextBlock Foreground="#AAA" 
                                                    FontSize="11">
                                             <Run Text="Позиция: "/>
                                             <Run Text="{Binding QueuePosition}" 
@@ -448,10 +448,10 @@
                                                  Foreground="#4FC3F7"/>
                                                             </TextBlock>
                                                             <TextBlock Text=" • " 
-                                                   Foreground="#888" 
+                                                   Foreground="#AAA" 
                                                    FontSize="11" 
                                                    Margin="5,0"/>
-                                                            <TextBlock Foreground="#888" 
+                                                            <TextBlock Foreground="#AAA" 
                                                    FontSize="11">
                                             <Run Text="Статус: "/>
                                             <Run Text="{Binding QueueStatus}" 
@@ -489,7 +489,7 @@
                                             Width="32" 
                                             Height="32" 
                                             Margin="0,0,5,0"
-                                            Background="#333"
+                                            Background="#30FFFFFF"
                                             BorderThickness="0"
                                             Cursor="Hand"
                                             ToolTip="Поднять выше"
@@ -498,14 +498,14 @@
                                                                 <ControlTemplate TargetType="Button">
                                                                     <Border Background="{TemplateBinding Background}" CornerRadius="4">
                                                                         <Path Data="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z" 
-                                                          Fill="#AAA" 
+                                                          Fill="#CCC" 
                                                           Stretch="Uniform" 
                                                           Width="14" 
                                                           Height="14"/>
                                                                     </Border>
                                                                     <ControlTemplate.Triggers>
                                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter Property="Background" Value="#444"/>
+                                                                            <Setter Property="Background" Value="#50FFFFFF"/>
                                                                         </Trigger>
                                                                     </ControlTemplate.Triggers>
                                                                 </ControlTemplate>
@@ -517,7 +517,7 @@
                                             Width="32" 
                                             Height="32" 
                                             Margin="0,0,5,0"
-                                            Background="#333"
+                                            Background="#30FFFFFF"
                                             BorderThickness="0"
                                             Cursor="Hand"
                                             ToolTip="Опустить ниже"
@@ -526,14 +526,14 @@
                                                                 <ControlTemplate TargetType="Button">
                                                                     <Border Background="{TemplateBinding Background}" CornerRadius="4">
                                                                         <Path Data="M7.41,8.59L12,13.17L16.59,8.59L18,10L12,16L6,10L7.41,8.59Z" 
-                                                          Fill="#AAA" 
+                                                          Fill="#CCC" 
                                                           Stretch="Uniform" 
                                                           Width="14" 
                                                           Height="14"/>
                                                                     </Border>
                                                                     <ControlTemplate.Triggers>
                                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter Property="Background" Value="#444"/>
+                                                                            <Setter Property="Background" Value="#50FFFFFF"/>
                                                                         </Trigger>
                                                                     </ControlTemplate.Triggers>
                                                                 </ControlTemplate>
@@ -607,7 +607,7 @@
                    Text="Очередь пуста"
                    VerticalAlignment="Center" 
                    HorizontalAlignment="Center" 
-                   Foreground="#44FFFFFF" 
+                   Foreground="#60FFFFFF" 
                    FontSize="14"/>
                         </Grid>
                     </Border>
