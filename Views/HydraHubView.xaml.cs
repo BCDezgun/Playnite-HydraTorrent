@@ -1459,7 +1459,7 @@ namespace HydraTorrent.Views
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+        }        
 
         // ────────────────────────────────────────────────────────────────
         // Управление очередью загрузок (UI)

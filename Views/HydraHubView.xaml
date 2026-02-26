@@ -47,16 +47,7 @@
             <Border.BorderBrush>
                 <SolidColorBrush Color="Gray" Opacity="0.2"/>
             </Border.BorderBrush>
-            <DockPanel>
-                <Button x:Name="btnBack" Width="48" Height="48" Margin="8,0,0,0" Background="Transparent" BorderThickness="0" Cursor="Hand">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Path Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" 
-                                  Fill="#CCCCCC" Stretch="Uniform" Width="20" Height="20" 
-                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
+            <DockPanel>                
                 <TextBlock Text="{DynamicResource LOC_HydraTorrent_HubTitle}" Margin="12,0,0,0" VerticalAlignment="Center" 
                            FontSize="22" FontWeight="SemiBold" Foreground="White"/>
             </DockPanel>
