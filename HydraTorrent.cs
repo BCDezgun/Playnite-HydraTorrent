@@ -210,7 +210,7 @@ namespace HydraTorrent
 
                 PlayniteApi.Notifications.Add(new NotificationMessage(
                     "HydraTorrent",
-                    $"Возобновлена загрузка: {pausedGame.Name}",
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ResumedDownload"), pausedGame.Name),
                     NotificationType.Info));
 
                 if (HydraHubView.CurrentInstance != null)
@@ -280,7 +280,7 @@ namespace HydraTorrent
 
             PlayniteApi.Notifications.Add(new NotificationMessage(
                 "HydraTorrent",
-                $"Начата загрузка: {nextQueued.Name}",
+                string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadStarted"), nextQueued.Name),
                 NotificationType.Info));
 
             if (HydraHubView.CurrentInstance != null)
@@ -335,13 +335,13 @@ namespace HydraTorrent
             {
                 string statusText = existingInQueue.QueueStatus switch
                 {
-                    "Downloading" => "⚠️ Эта игра уже скачивается!",
-                    "Queued" => $"⚠️ Эта игра уже в очереди (позиция {existingInQueue.QueuePosition})",
-                    "Completed" => "⚠️ Эта игра уже была скачана!",
-                    _ => "⚠️ Игра уже есть в списке загрузок!"
+                    "Downloading" => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Downloading"),
+                    "Queued" => string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Queued"), existingInQueue.QueuePosition),
+                    "Completed" => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Completed"),
+                    _ => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Generic")
                 };
 
-                PlayniteApi.Dialogs.ShowMessage(statusText, "HydraTorrent");
+                PlayniteApi.Dialogs.ShowMessage(statusText, ResourceProvider.GetString("LOC_HydraTorrent_Attention"));
                 logger.Warn($"Попытка добавить дубликат: {game.Name}");
                 return;
             }
@@ -351,7 +351,9 @@ namespace HydraTorrent
 
             if (string.IsNullOrEmpty(hash))
             {
-                PlayniteApi.Dialogs.ShowErrorMessage("Не удалось извлечь хеш из magnet-ссылки", "Ошибка");
+                PlayniteApi.Dialogs.ShowErrorMessage(
+                    ResourceProvider.GetString("LOC_HydraTorrent_FailedExtractHash"),
+                    ResourceProvider.GetString("LOC_HydraTorrent_Error"));
                 return;
             }
 
@@ -401,7 +403,7 @@ namespace HydraTorrent
 
                         PlayniteApi.Notifications.Add(new NotificationMessage(
                             "HydraTorrent",
-                            $"«{game.Name}» добавлена в очередь (позиция {position})",
+                            string.Format(ResourceProvider.GetString("LOC_HydraTorrent_AddedToQueue"), game.Name, position),
                             NotificationType.Info));
 
                         logger.Info($"Добавлено в очередь: {game.Name} (позиция {position})");
@@ -425,7 +427,7 @@ namespace HydraTorrent
 
                         PlayniteApi.Notifications.Add(new NotificationMessage(
                             "HydraTorrent",
-                            $"Начата загрузка «{game.Name}»",
+                            string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadStarted"), game.Name),
                             NotificationType.Info));
 
                         logger.Info($"Начата загрузка: {game.Name}");
@@ -437,8 +439,10 @@ namespace HydraTorrent
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "Ошибка qBittorrent");
-                PlayniteApi.Dialogs.ShowErrorMessage($"Ошибка начала загрузки: {ex.Message}", "HydraTorrent");
+                logger.Error(ex, "qBittorrent error");  // ← Логи можно на английском
+                PlayniteApi.Dialogs.ShowErrorMessage(
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadError"), ex.Message),
+                    ResourceProvider.GetString("LOC_HydraTorrent_Error"));
             }
         }
 
@@ -518,7 +522,7 @@ namespace HydraTorrent
         {
             yield return new SidebarItem
             {
-                Title = "Hydra Hub",
+                Title = ResourceProvider.GetString("LOC_HydraTorrent_HubTitle"),
                 Type = SiderbarItemType.View,
                 Icon = new TextBlock
                 {

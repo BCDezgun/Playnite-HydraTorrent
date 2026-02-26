@@ -75,7 +75,7 @@ namespace HydraTorrent.Views
             }
         }
 
-        private string _sourceButtonText = "Все источники";
+        private string _sourceButtonText = ResourceProvider.GetString("LOC_HydraTorrent_AllSources");
         public string SourceButtonText
         {
             get => _sourceButtonText;
@@ -338,14 +338,15 @@ namespace HydraTorrent.Views
                     lblLoadingStatus.Visibility = Visibility.Hidden;
                 }
                 btnPauseResume.Visibility = Visibility.Hidden;
-                btnSettings.Visibility = Visibility.Hidden;
-                txtStatus.Text = "Очередь загрузок появится здесь...";
+                btnSettings.Visibility = Visibility.Hidden;                
                 _maxSpeedSeen = 0;
                 return;
             }
             
             // Обычное обновление при наличии статуса
             txtCurrentGameName.Text = game.Name?.ToUpper() ?? "ЗАГРУЗКА...";
+
+            txtCurrentGameName.Visibility = Visibility.Visible;  // ✅ ПОКАЗАТЬ!
 
             // ✅ ПОКАЗЫВАЕМ КОНТЕЙНЕРЫ СКОРОСТЕЙ
             if (pnlDownloadSpeed != null)
@@ -376,6 +377,10 @@ namespace HydraTorrent.Views
                 lblSeeds.Visibility = Visibility.Visible;
             if (lblPeers != null)
                 lblPeers.Visibility = Visibility.Visible;
+
+            // ✅ ПОКАЗЫВАЕМ КНОПКИ
+            btnPauseResume.Visibility = Visibility.Visible;
+            btnSettings.Visibility = Visibility.Visible;
 
             long currentSpeedBytes = status.DownloadSpeed;            
             if (currentSpeedBytes > _maxSpeedSeen)
@@ -420,9 +425,18 @@ namespace HydraTorrent.Views
 
             // ✅ СИДЫ/ПИРЫ - ДОБАВИТЬ ЭТОТ БЛОК
             if (lblSeeds != null && status.Seeds.HasValue)
-                lblSeeds.Text = $"Сиды: {status.Seeds.Value}";
+            {
+                lblSeeds.Text = string.Format(
+                    ResourceProvider.GetString("LOC_HydraTorrent_SeederCount"),
+                    status.Seeds.Value);
+            }
+                
             if (lblPeers != null && status.Peers.HasValue)
-                lblPeers.Text = $"Пиры: {status.Peers.Value}";
+            {
+                lblPeers.Text = string.Format(
+                    ResourceProvider.GetString("LOC_HydraTorrent_PeerCount"),
+                    status.Peers.Value);
+            }                
 
             double uiProgress = status.Progress;
             if (uiProgress > 0 && uiProgress <= 1.0)
@@ -433,30 +447,29 @@ namespace HydraTorrent.Views
             double downloadedGB = status.DownloadedSize / 1024.0 / 1024.0 / 1024.0;
             double totalGB = status.TotalSize / 1024.0 / 1024.0 / 1024.0;
 
-            lblDownloadedAmount.Text = $"{uiProgress:F1}% ({downloadedGB:F1} ГБ / {totalGB:F1} ГБ)";
+            lblDownloadedAmount.Text = string.Format(ResourceProvider.GetString("LOC_HydraTorrent_PercentFormat"),uiProgress,downloadedGB,totalGB);
 
             if (status.ETA.HasValue && status.ETA.Value.TotalSeconds > 0)
             {
                 string timeFormat = status.ETA.Value.TotalHours >= 1 ? @"hh\:mm\:ss" : @"mm\:ss";
-                lblETA.Text = $"Осталось примерно: {status.ETA.Value.ToString(timeFormat)}";
+                lblETA.Text = $"{ResourceProvider.GetString("LOC_HydraTorrent_Remaining")} {status.ETA.Value.ToString(timeFormat)}";
             }
             else
             {
-                lblETA.Text = "Осталось: --:--:--";
+                lblETA.Text = ResourceProvider.GetString("LOC_HydraTorrent_NoETA");
             }
 
             if (lblLoadingStatus != null)
             {
                 lblLoadingStatus.Visibility = Visibility.Visible;
-
                 if (status.Status.Contains("Пауза") || status.Status.Contains("paused"))
                 {
-                    lblLoadingStatus.Text = "Простаивает";
+                    lblLoadingStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_Idle");
                     lblLoadingStatus.Foreground = new SolidColorBrush(Colors.Gray);
                 }
                 else
                 {
-                    lblLoadingStatus.Text = "Загружается";
+                    lblLoadingStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_Loading");
                     lblLoadingStatus.Foreground = new SolidColorBrush(Color.FromRgb(46, 204, 113));
                 }
             }
@@ -742,14 +755,14 @@ namespace HydraTorrent.Views
         {
             if (IsAllSourcesSelected)
             {
-                SourceButtonText = "Все источники";
+                SourceButtonText = ResourceProvider.GetString("LOC_HydraTorrent_AllSources");
                 return;
             }
 
             var selected = FilterSources.Where(x => x.IsSelected).ToList();
             if (selected.Count == 0)
             {
-                SourceButtonText = "Не выбрано";
+                SourceButtonText = ResourceProvider.GetString("LOC_HydraTorrent_NoneSelected");
             }
             else if (selected.Count == 1)
             {
@@ -777,14 +790,14 @@ namespace HydraTorrent.Views
             var query = txtSearch.Text.Trim();
             if (string.IsNullOrEmpty(query))
             {
-                txtStatus.Text = "Введите название игры!";
+                txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_EnterGameName");
                 return;
             }
 
             var settings = _plugin.GetSettings().Settings;
             if (settings.Sources == null || settings.Sources.Count == 0)
             {
-                txtStatus.Text = "⚠️ Источники не настроены!";
+                txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_SourcesNotConfigured");
                 return;
             }
 
@@ -795,7 +808,7 @@ namespace HydraTorrent.Views
                 _plugin.SavePluginSettings(settings);
             }
 
-            txtStatus.Text = $"🔎 Ищем «{query}»...";
+            txtStatus.Text = string.Format(ResourceProvider.GetString("LOC_HydraTorrent_Searching"),query);
             lstResults.ItemsSource = null;
             btnSearch.IsEnabled = false;
             pnlPagination.Children.Clear();
@@ -807,7 +820,7 @@ namespace HydraTorrent.Views
 
                 if (_allResults.Count == 0)
                 {
-                    txtStatus.Text = "Ничего не найдено 😔";
+                    txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_NoResults");
                     _filteredResults = new List<TorrentResult>();
                 }
                 else
@@ -831,7 +844,7 @@ namespace HydraTorrent.Views
             {
                 lstResults.ItemsSource = null;
                 pnlPagination.Children.Clear();
-                txtStatus.Text = "Нет результатов для выбранных фильтров";
+                txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_NoResultsForFilters");
                 return;
             }
 
@@ -840,7 +853,7 @@ namespace HydraTorrent.Views
             lstResults.ItemsSource = pageData;
 
             int totalPages = (int)Math.Ceiling((double)_filteredResults.Count / _itemsPerPage);
-            txtStatus.Text = $"Найдено: {_filteredResults.Count} (Страница {_currentPage} из {totalPages})";
+            txtStatus.Text = string.Format(ResourceProvider.GetString("LOC_HydraTorrent_PageInfo"),_filteredResults.Count,_currentPage,totalPages);
 
             UpdatePaginationButtons(totalPages);
         }
@@ -935,12 +948,18 @@ namespace HydraTorrent.Views
                 var existingGame = PlayniteApi.Database.Games.FirstOrDefault(g => g.Name.Equals(result.Name, StringComparison.OrdinalIgnoreCase));
                 if (existingGame != null)
                 {
-                    if (PlayniteApi.Dialogs.ShowMessage($"Игра «{existingGame.Name}» уже есть. Добавить еще раз?", "Внимание", MessageBoxButton.YesNo) == MessageBoxResult.No)
+                    if (PlayniteApi.Dialogs.ShowMessage(
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_GameAlreadyExists"), existingGame.Name),
+                        ResourceProvider.GetString("LOC_HydraTorrent_Attention"),
+                        MessageBoxButton.YesNo) == MessageBoxResult.No)
                         return;
                 }
 
                 string suggestedName = CleanGameName(result.Name);
-                var dialogResult = PlayniteApi.Dialogs.SelectString("Отредактируйте название:", "Название игры", suggestedName);
+                var dialogResult = PlayniteApi.Dialogs.SelectString(
+                    ResourceProvider.GetString("LOC_HydraTorrent_EditGameName"),
+                    ResourceProvider.GetString("LOC_HydraTorrent_GameNameTitle"),
+                    suggestedName);
 
                 if (!dialogResult.Result) return;
 
@@ -957,7 +976,9 @@ namespace HydraTorrent.Views
                     PlayniteApi.Database.Games.Update(importedGame);
                     _plugin.SaveHydraData(importedGame, result);
                     PlayniteApi.MainView.SelectGame(importedGame.Id);
-                    txtStatus.Text = $"✅ «{finalName}» добавлена!";
+                    txtStatus.Text = string.Format(
+                        ResourceProvider.GetString("LOC_HydraTorrent_GameAdded"),
+                        finalName);
                 }
             }
         }
@@ -979,7 +1000,7 @@ namespace HydraTorrent.Views
         {
             if (_activeGameId == Guid.Empty)
             {
-                PlayniteApi.Dialogs.ShowMessage("Нет активной загрузки.", "Hydra");
+                PlayniteApi.Dialogs.ShowMessage(ResourceProvider.GetString("LOC_HydraTorrent_NoActiveDownload"),"Hydra");
                 return;
             }
 
@@ -989,7 +1010,7 @@ namespace HydraTorrent.Views
             var torrentData = _plugin.GetHydraData(game);
             if (torrentData == null || string.IsNullOrEmpty(torrentData.TorrentHash))
             {
-                PlayniteApi.Dialogs.ShowMessage("Не найден хеш торрента.", "Ошибка");
+                PlayniteApi.Dialogs.ShowMessage(ResourceProvider.GetString("LOC_HydraTorrent_TorrentHashNotFound"),ResourceProvider.GetString("LOC_HydraTorrent_Error"));
                 return;
             }
 
@@ -1009,7 +1030,9 @@ namespace HydraTorrent.Views
 
                 if (torrent == null)
                 {
-                    PlayniteApi.Dialogs.ShowMessage("Торрент не найден в qBittorrent.", "Ошибка");
+                    PlayniteApi.Dialogs.ShowMessage(
+                        ResourceProvider.GetString("LOC_HydraTorrent_TorrentNotFound"),
+                        ResourceProvider.GetString("LOC_HydraTorrent_Error"));
                     return;
                 }
 
@@ -1069,7 +1092,9 @@ namespace HydraTorrent.Views
                 // ✅ 7. Уведомление
                 PlayniteApi.Notifications.Add(new NotificationMessage(
                     "Hydra",
-                    _isPaused ? $"На паузе: {game.Name}" : $"Возобновлено: {game.Name}",
+                    _isPaused ?
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_Paused"), game.Name) :
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_Resumed"), game.Name),
                     NotificationType.Info));
             }
             catch (Exception ex)
@@ -1109,7 +1134,9 @@ namespace HydraTorrent.Views
         {
             if (_activeGameId == Guid.Empty)
             {
-                PlayniteApi.Dialogs.ShowMessage("Нет активной загрузки для удаления.", "Hydra");
+                PlayniteApi.Dialogs.ShowMessage(
+                    ResourceProvider.GetString("LOC_HydraTorrent_NoDownloadToDelete"),
+                    "Hydra");
                 return;
             }
 
@@ -1119,14 +1146,18 @@ namespace HydraTorrent.Views
             var game = PlayniteApi.Database.Games.Get(gameIdToDelete);
             if (game == null)
             {
-                PlayniteApi.Dialogs.ShowMessage("Игра не найдена.", "Ошибка");
+                PlayniteApi.Dialogs.ShowMessage(
+                    ResourceProvider.GetString("LOC_HydraTorrent_GameNotFound"),
+                    ResourceProvider.GetString("LOC_HydraTorrent_Error"));
                 return;
             }
 
             var torrentData = _plugin.GetHydraData(game);
             if (torrentData == null || string.IsNullOrEmpty(torrentData.TorrentHash))
             {
-                PlayniteApi.Dialogs.ShowMessage("Не найден хеш торрента.", "Ошибка");
+                PlayniteApi.Dialogs.ShowMessage(
+                    ResourceProvider.GetString("LOC_HydraTorrent_TorrentHashNotFound"),
+                    ResourceProvider.GetString("LOC_HydraTorrent_Error"));
                 return;
             }
 
@@ -1135,8 +1166,8 @@ namespace HydraTorrent.Views
             // ────────────────────────────────────────────────────────────────
 
             var confirmTorrent = PlayniteApi.Dialogs.ShowMessage(
-                $"Удалить торрент «{game.Name}»\nи все скачанные файлы?",
-                "Удаление торрента",
+                string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConfirmDeleteTorrent"), game.Name),
+                ResourceProvider.GetString("LOC_HydraTorrent_DeleteTorrentTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -1167,8 +1198,8 @@ namespace HydraTorrent.Views
                 // ────────────────────────────────────────────────────────────────
 
                 var confirmLibrary = PlayniteApi.Dialogs.ShowMessage(
-                    $"Удалить игру «{game.Name}»\nиз библиотеки Playnite?",
-                    "Удаление из библиотеки",
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConfirmDeleteLibrary"), game.Name),
+                    ResourceProvider.GetString("LOC_HydraTorrent_DeleteFromLibraryTitle"),
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
 
@@ -1188,12 +1219,12 @@ namespace HydraTorrent.Views
                     }
 
                     PlayniteApi.Database.Games.Remove(game);
-                    txtStatus.Text = "Игра и торрент удалены";
+                    txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_GameAndTorrentDeleted");
                     HydraTorrent.logger.Info($"Удалена игра из библиотеки: {game.Name}");
 
                     PlayniteApi.Notifications.Add(new NotificationMessage(
                         "Hydra",
-                        $"«{game.Name}» удалена из библиотеки",
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DeletedFromLibrary"), game.Name),
                         NotificationType.Info));
                 }
                 else
@@ -1204,12 +1235,12 @@ namespace HydraTorrent.Views
                                               .Replace("[NEEDS_METADATA]", "")
                                               .Trim();
                     PlayniteApi.Database.Games.Update(game);
-                    txtStatus.Text = "Торрент удалён, игра осталась в библиотеке";
+                    txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_TorrentDeletedGameKept");
                     HydraTorrent.logger.Info($"Торрент удалён, игра и данные сохранены: {game.Name}");
 
                     PlayniteApi.Notifications.Add(new NotificationMessage(
                         "Hydra",
-                        $"Торрент «{game.Name}» удалён. Данные сохранены для повторной загрузки.",
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_TorrentDeletedDataSaved"), game.Name),
                         NotificationType.Info));
                 }
 
@@ -1530,13 +1561,15 @@ namespace HydraTorrent.Views
             {
                 if (!item.GameId.HasValue)
                 {
-                    PlayniteApi.Dialogs.ShowMessage("Не найден ID игры.", "Ошибка");
+                    PlayniteApi.Dialogs.ShowMessage(
+                        ResourceProvider.GetString("LOC_HydraTorrent_NoGameId"),
+                        ResourceProvider.GetString("LOC_HydraTorrent_Error"));
                     return;
                 }
 
                 var confirm = PlayniteApi.Dialogs.ShowMessage(
-                    $"Запустить «{item.Name}»?\n\nТекущая активная загрузка будет поставлена на паузу.",
-                    "Принудительный старт",
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConfirmForceStart"), item.Name),
+                    ResourceProvider.GetString("LOC_HydraTorrent_ForceStartTitle"),
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
 
@@ -1588,7 +1621,7 @@ namespace HydraTorrent.Views
 
                 PlayniteApi.Notifications.Add(new NotificationMessage(
                     "Hydra",
-                    $"Запущено: {item.Name}",
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_Started"), item.Name),
                     NotificationType.Info));
             }
         }
@@ -1599,13 +1632,15 @@ namespace HydraTorrent.Views
             {
                 if (!item.GameId.HasValue)
                 {
-                    PlayniteApi.Dialogs.ShowMessage("Не найден ID игры.", "Ошибка");
+                    PlayniteApi.Dialogs.ShowMessage(
+                        ResourceProvider.GetString("LOC_HydraTorrent_NoGameId"),
+                        ResourceProvider.GetString("LOC_HydraTorrent_Error"));
                     return;
                 }
 
                 var confirm = PlayniteApi.Dialogs.ShowMessage(
-                    $"Удалить «{item.Name}» из очереди?\n\nТоррент будет остановлен, но файлы останутся на диске.",
-                    "Удаление из очереди",
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConfirmRemoveFromQueue"), item.Name),
+                    ResourceProvider.GetString("LOC_HydraTorrent_RemoveFromQueueTitle"),
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
 
@@ -1647,7 +1682,7 @@ namespace HydraTorrent.Views
 
                     PlayniteApi.Notifications.Add(new NotificationMessage(
                         "Hydra",
-                        $"Удалено из очереди: {item.Name}",
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_RemovedFromQueue"), item.Name),
                         NotificationType.Info));
                 }
                 catch (Exception ex)

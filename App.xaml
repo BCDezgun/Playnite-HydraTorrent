@@ -5,8 +5,8 @@
         <ResourceDictionary>
             <Style x:Key="BaseTextBlockStyle" TargetType="TextBlock" />
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Localization/ru_RU.xaml"/>
-                <ResourceDictionary Source="Localization/en_US.xaml" />
+                <ResourceDictionary Source="Localization/en_US.xaml"/>
+                <ResourceDictionary Source="Localization/ru_RU.xaml"/>                
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
