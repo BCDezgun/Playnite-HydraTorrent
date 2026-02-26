@@ -446,7 +446,10 @@ namespace HydraTorrent
         {
             var windowView = new DownloadPathWindow();
             var window = PlayniteApi.Dialogs.CreateWindow(new WindowCreationOptions { ShowMaximizeButton = false, ShowMinimizeButton = false });
-            window.Title = $"Установка {gameName}";
+
+            string titleTemplate = ResourceProvider.GetString("LOC_HydraTorrent_InstallTitle");
+            window.Title = string.Format(titleTemplate, gameName);
+
             window.Content = windowView;
             window.SizeToContent = SizeToContent.WidthAndHeight;
             window.WindowStartupLocation = WindowStartupLocation.CenterOwner;

@@ -1,5 +1,176 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
-                    
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- TABS AND NAVIGATION -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_TabSearch">🔍 Search Repacks</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TabDownloads">📥 Download Manager</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_HubTitle">Hydra Hub</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SEARCH -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_SearchButton">Search</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SearchPlaceholder">Enter game name and press Search</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EnterGameName">Enter game name!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Searching">🔎 Searching «{0}»...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResults">Nothing found 😔</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResultsForFilters">No results for selected filters</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameAdded">✅ «{0}» added!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameAlreadyExists">Game «{0}» already exists. Add again?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Attention">Attention</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EditGameName">Edit name:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameNameTitle">Game Name</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteFromHistory">Delete from history</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- FILTERS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_SearchFilters">SEARCH FILTERS</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Sources">Sources:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AllSources">All sources</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoneSelected">None selected</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoreFilters">Additional filters will appear here...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourcesNotConfigured">⚠️ Sources not configured!</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- DOWNLOAD MANAGER -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Loading">Downloading</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Idle">Idle</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadQueueTitle">📦 DOWNLOAD QUEUE</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QueueEmpty">Queue is empty</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QueueWillAppearHere">Download queue will appear here...</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SPEED STATISTICS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Download">Download</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Upload">Upload</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MaxSpeed">Max Speed</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Kbps">Kbps</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Mbps">Mbps</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- PROGRESS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Remaining">Approximately remaining:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoETA">Remaining: --:--:--</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PercentFormat">{0:F1}% ({1:F1} GB / {2:F1} GB)</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SEEDERS / PEERS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Seeds">Seeders:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Peers">Peers:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SeederCount">Seeders: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PeerCount">Peers: {0}</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- QUEUE -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Position">Position:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Status">Status:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoveUp">Move up</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoveDown">Move down</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStart">Start this game</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromQueue">Remove from queue</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PositionFormat">{0} (position {1})</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- DOWNLOAD MANAGEMENT -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Pause">Pause download</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Resume">Resume download</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentAndFiles">Delete torrent and all data</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoActiveDownload">No active download.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentNotFound">Torrent not found in qBittorrent.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentHashNotFound">Torrent hash not found.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameNotFound">Game not found.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Error">Error</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ErrorMsg">Error: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoGameId">Game ID not found.</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- CONFIRMATIONS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteTorrent">Delete torrent «{0}» and all downloaded files?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteLibrary">Delete game «{0}» from Playnite library?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentTitle">Delete Torrent</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteFromLibraryTitle">Delete from Library</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmForceStart">Start «{0}»? Current active download will be paused.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStartTitle">Force Start</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmRemoveFromQueue">Remove «{0}» from queue? Torrent will be stopped but files will remain on disk.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromQueueTitle">Remove from Queue</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- NOTIFICATIONS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_GameAndTorrentDeleted">Game and torrent deleted</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedGameKept">Torrent deleted, game kept in library</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Started">Started: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemovedFromQueue">Removed from queue: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Paused">Paused: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Resumed">Resumed: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeletedFromLibrary">«{0}» deleted from library</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Torrent «{0}» deleted. Data saved for re-download.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AddedToQueue">«{0}» added to queue (position {1})</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadStarted">Download started «{0}»</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ResumedDownload">Resumed download: {0}</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SETTINGS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_QBittorrentSettings">qBittorrent Settings</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_UseQbittorrent">Use qBittorrent for downloading</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Host">Host:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Port">Port:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Username">Username:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Password">Password:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadPaths">Download Paths</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_UseDefaultPath">Use default path for all downloads</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadPath">Download path:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Browse">Browse...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TestConnection">Test connection to qBittorrent</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackSources">Repack Sources (JSON)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AddSource">+ Add source</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourceHint">• Empty lines are not saved</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionSuccess">✅ Connection successful! qBittorrent API v{0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Success">Success!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionError">❌ Error: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionErrorTitle">Connection Error</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QBittorrentDisabled">qBittorrent is disabled in plugin settings.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionTest">Connection Test</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- DOWNLOAD PATH WINDOW -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_SelectInstallPath">Select installation location for game:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_BrowseShort">Browse</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Okay">Okay</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_InstallTitle">Installing {0}</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- QUEUE STATUS -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_StatusDownloading">Downloading</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusQueued">Queued</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusPaused">Paused</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusCompleted">Completed</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ERROR MESSAGES -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Downloading">⚠️ This game is already downloading!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Queued">⚠️ This game is already in queue (position {0})</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Completed">⚠️ This game has already been downloaded!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Generic">⚠️ Game is already in download list!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_FailedExtractHash">Failed to extract hash from magnet link</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadError">Download start error: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ManagementError">Management error: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteError">Delete error: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoDownloadToDelete">No active download to delete.</sys:String>
+
 </ResourceDictionary>

@@ -54,9 +54,13 @@ namespace HydraTorrent
         private async void TestConnection_Click(object sender, RoutedEventArgs e)
         {
             var settings = viewModel.Settings;
+
+            // Проверка активности qBittorrent
             if (!settings.UseQbittorrent)
             {
-                API.Instance.Dialogs.ShowMessage("qBittorrent отключён в настройках плагина.", "Тест подключения");
+                API.Instance.Dialogs.ShowMessage(
+                    ResourceProvider.GetString("LOC_HydraTorrent_QBittorrentDisabled"),
+                    ResourceProvider.GetString("LOC_HydraTorrent_ConnectionTest"));
                 return;
             }
 
@@ -68,11 +72,18 @@ namespace HydraTorrent
             {
                 await client.LoginAsync(settings.QBittorrentUsername, password);
                 var version = await client.GetApiVersionAsync();
-                API.Instance.Dialogs.ShowMessage($"✅ Подключение успешно!\nqBittorrent API v{version}", "Успех!");
+
+                // Успешное сообщение
+                API.Instance.Dialogs.ShowMessage(
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConnectionSuccess"), version),
+                    ResourceProvider.GetString("LOC_HydraTorrent_Success"));
             }
             catch (Exception ex)
             {
-                API.Instance.Dialogs.ShowMessage($"❌ Ошибка: {ex.Message}", "Ошибка подключения");
+                // Ошибка
+                API.Instance.Dialogs.ShowMessage(
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConnectionError"), ex.Message),
+                    ResourceProvider.GetString("LOC_HydraTorrent_ConnectionErrorTitle"));
             }
         }
 

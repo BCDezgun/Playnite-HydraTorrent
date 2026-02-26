@@ -1,0 +1,176 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ВКЛАДИ И НАВИГАЦИЯ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_TabSearch">🔍 Поиск репаков</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TabDownloads">📥 Менеджер загрузок</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_HubTitle">Hydra Hub</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ПОИСК -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_SearchButton">Искать</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SearchPlaceholder">Введите название игры и нажмите Искать</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EnterGameName">Введите название игры!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Searching">🔎 Ищем «{0}»...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResults">Ничего не найдено 😔</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResultsForFilters">Нет результатов для выбранных фильтров</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameAdded">✅ «{0}» добавлена!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameAlreadyExists">Игра «{0}» уже есть. Добавить еще раз?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Attention">Внимание</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EditGameName">Отредактируйте название:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameNameTitle">Название игры</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteFromHistory">Удалить из истории</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ФИЛЬТРЫ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_SearchFilters">ФИЛЬТРЫ ПОИСКА</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Sources">Источники:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AllSources">Все источники</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoneSelected">Не выбрано</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoreFilters">Дополнительные фильтры появятся здесь...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourcesNotConfigured">⚠️ Источники не настроены!</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- МЕНЕДЖЕР ЗАГРУЗОК -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Loading">Загружается</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Idle">Простаивает</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadQueueTitle">📦 ОЧЕРЕДЬ ЗАГРУЗОК</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QueueEmpty">Очередь пуста</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QueueWillAppearHere">Очередь загрузок появится здесь...</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- СТАТИСТИКА СКОРОСТИ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Download">Загрузка</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Upload">Отдача</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MaxSpeed">Макс. Скор.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Kbps">Кбит/с</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Mbps">Мбит/с</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ПРОГРЕСС -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Remaining">Осталось примерно:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoETA">Осталось: --:--:--</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PercentFormat">{0:F1}% ({1:F1} ГБ / {2:F1} ГБ)</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- СИДЫ / ПИРЫ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Seeds">Сиды:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Peers">Пиры:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SeederCount">Сиды: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PeerCount">Пиры: {0}</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ОЧЕРЕДЬ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Position">Позиция:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Status">Статус:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoveUp">Поднять выше</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoveDown">Опустить ниже</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStart">Запустить эту игру</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromQueue">Удалить из очереди</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PositionFormat">{0} (позиция {1})</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- УПРАВЛЕНИЕ ЗАГРУЗКОЙ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_Pause">Поставить на паузу</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Resume">Возобновить загрузку</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentAndFiles">Удалить торрент и все данные</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoActiveDownload">Нет активной загрузки.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentNotFound">Торрент не найден в qBittorrent.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentHashNotFound">Не найден хеш торрента.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameNotFound">Игра не найдена.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Error">Ошибка</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ErrorMsg">Ошибка: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoGameId">Не найден ID игры.</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ПОДТВЕРЖДЕНИЯ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteTorrent">Удалить торрент «{0}» и все скачанные файлы?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteLibrary">Удалить игру «{0}» из библиотеки Playnite?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentTitle">Удаление торрента</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteFromLibraryTitle">Удаление из библиотеки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmForceStart">Запустить «{0}»? Текущая активная загрузка будет поставлена на паузу.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStartTitle">Принудительный старт</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmRemoveFromQueue">Удалить «{0}» из очереди? Торрент будет остановлен, но файлы останутся на диске.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromQueueTitle">Удаление из очереди</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- УВЕДОМЛЕНИЯ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_GameAndTorrentDeleted">Игра и торрент удалены</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedGameKept">Торрент удалён, игра осталась в библиотеке</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Started">Запущено: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemovedFromQueue">Удалено из очереди: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Paused">На паузе: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Resumed">Возобновлено: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeletedFromLibrary">«{0}» удалена из библиотеки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Торрент «{0}» удалён. Данные сохранены для повторной загрузки.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AddedToQueue">«{0}» добавлена в очередь (позиция {1})</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadStarted">Начата загрузка «{0}»</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ResumedDownload">Возобновлена загрузка: {0}</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- НАСТРОЙКИ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_QBittorrentSettings">Настройки qBittorrent</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_UseQbittorrent">Использовать qBittorrent для скачивания</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Host">Адрес:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Port">Порт:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Username">Логин:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Password">Пароль:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadPaths">Пути загрузки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_UseDefaultPath">Использовать путь по умолчанию для всех загрузок</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadPath">Путь загрузки:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Browse">Обзор...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TestConnection">Протестировать подключение к qBittorrent</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackSources">Источники репаков (JSON)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AddSource">+ Добавить источник</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourceHint">• Пустые строки не сохраняются</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionSuccess">✅ Подключение успешно! qBittorrent API v{0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Success">Успех!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionError">❌ Ошибка: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionErrorTitle">Ошибка подключения</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QBittorrentDisabled">qBittorrent отключён в настройках плагина.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionTest">Тест подключения</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ОКНО ВЫБОРА ПУТИ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_SelectInstallPath">Укажите место для установки игры:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_BrowseShort">Обзор</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Okay">Окей</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_InstallTitle">Установка {0}</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- СТАТУСЫ ОЧЕРЕДИ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_StatusDownloading">Загружается</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusQueued">В очереди</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusPaused">На паузе</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusCompleted">Завершен</sys:String>
+    
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- СООБЩЕНИЯ ОБ ОШИБКАХ -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Downloading">⚠️ Эта игра уже скачивается!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Queued">⚠️ Эта игра уже в очереди (позиция {0})</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Completed">⚠️ Эта игра уже была скачана!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DuplicateWarning_Generic">⚠️ Игра уже есть в списке загрузок!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_FailedExtractHash">Не удалось извлечь хеш из magnet-ссылки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadError">Ошибка начала загрузки: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ManagementError">Ошибка управления: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteError">Ошибка удаления: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoDownloadToDelete">Нет активной загрузки для удаления.</sys:String>
+
+</ResourceDictionary>

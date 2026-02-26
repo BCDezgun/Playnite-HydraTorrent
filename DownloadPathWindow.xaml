@@ -3,15 +3,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Width="400" Height="150">
     <StackPanel Margin="20">
-        <TextBlock Text="Укажите место для установки игры:" Margin="0,0,0,10"/>
+        <TextBlock Text="{DynamicResource LOC_HydraTorrent_SelectInstallPath}" 
+                   Margin="0,0,0,10" Foreground="White" FontSize="14"/>
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBox x:Name="PathTextBox" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <Button Grid.Column="1" Content="Обзор" Click="Browse_Click" Padding="10,2"/>
+            <Button Grid.Column="1" 
+                    Content="{DynamicResource LOC_HydraTorrent_BrowseShort}" 
+                    Click="Browse_Click" 
+                    Padding="10,2"/>
         </Grid>
-        <Button Content="Окей" Click="Ok_Click" Margin="0,20,0,0" HorizontalAlignment="Right" Width="80"/>
+        <Button Content="{DynamicResource LOC_HydraTorrent_Okay}" 
+                Click="Ok_Click" 
+                Margin="0,20,0,0" 
+                HorizontalAlignment="Right" 
+                Width="80"/>
     </StackPanel>
 </UserControl>
