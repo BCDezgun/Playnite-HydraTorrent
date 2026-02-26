@@ -141,7 +141,7 @@
 
 | Search | Download Manager | Queue |
 |--------|-----------------|-------|
-| ![Search](screenshots/search.png) | ![Downloads](screenshots/downloads.png) | ![Queue](screenshots/queue.png) |
+| ![Search](screenshots/search_EN.png) | ![Downloads](screenshots/downloads_EN.png) | ![Queue](screenshots/queue_EN.png) |
 
 ---
 
