@@ -47,6 +47,34 @@ namespace HydraTorrent.Scrapers
             }
         }
 
+        private long ParseSizeToBytes(string sizeString)
+        {
+            if (string.IsNullOrEmpty(sizeString)) return 0;
+
+            var match = System.Text.RegularExpressions.Regex.Match(
+                sizeString,
+                @"([\d\.]+)\s*(GB|MB|KB|TB)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (!match.Success) return 0;
+
+            if (!double.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double value))
+            {
+                return 0;
+            }
+
+            string unit = match.Groups[2].Value.ToUpper();
+            return unit switch
+            {
+                "TB" => (long)(value * 1024 * 1024 * 1024 * 1024),
+                "GB" => (long)(value * 1024 * 1024 * 1024),
+                "MB" => (long)(value * 1024 * 1024),
+                "KB" => (long)(value * 1024),
+                _ => 0
+            };
+        }
+
         public async Task<List<TorrentResult>> SearchAsync(string query, HttpClient client)
         {
             await LoadDataAsync(client);
@@ -56,7 +84,6 @@ namespace HydraTorrent.Scrapers
 
             var lowerQuery = query.ToLowerInvariant();
 
-            // УБРАНО: .Take(20). Теперь возвращаем полный список совпадений для пагинации
             return _repackList
                 .Where(r => !string.IsNullOrEmpty(r.Title) && r.Title.ToLowerInvariant().Contains(lowerQuery))
                 .Select(r => new TorrentResult
@@ -65,7 +92,11 @@ namespace HydraTorrent.Scrapers
                     Size = r.FileSize ?? "N/A",
                     Magnet = r.Uris?.FirstOrDefault(u => u.StartsWith("magnet:")) ?? "",
                     Source = _sourceName,
-                    Year = (r.UploadDate != null && r.UploadDate.Length >= 4) ? r.UploadDate.Substring(0, 4) : ""
+                    Year = (r.UploadDate != null && r.UploadDate.Length >= 4) ? r.UploadDate.Substring(0, 4) : "",
+                    UploadDate = !string.IsNullOrEmpty(r.UploadDate) && DateTime.TryParse(r.UploadDate, out var date)
+                        ? date
+                        : null,
+                    SizeBytes = ParseSizeToBytes(r.FileSize)
                 })
                 .ToList();
         }

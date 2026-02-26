@@ -51,6 +51,9 @@ namespace HydraTorrent.Views
         private int _currentPage = 1;
         private const int _itemsPerPage = 10;
 
+        private string _sortByColumn = null;
+        private bool _sortAscending = false;
+
         public static HydraHubView CurrentInstance { get; private set; }
 
         // ────────────────────────────────────────────────────────────────
@@ -818,6 +821,10 @@ namespace HydraTorrent.Views
                 var results = await _scraperService.SearchAsync(query);
                 _allResults = results ?? new List<TorrentResult>();
 
+                _sortByColumn = null;
+                _sortAscending = false;
+                UpdateSortIndicators();
+
                 if (_allResults.Count == 0)
                 {
                     txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_NoResults");
@@ -853,7 +860,11 @@ namespace HydraTorrent.Views
             lstResults.ItemsSource = pageData;
 
             int totalPages = (int)Math.Ceiling((double)_filteredResults.Count / _itemsPerPage);
-            txtStatus.Text = string.Format(ResourceProvider.GetString("LOC_HydraTorrent_PageInfo"),_filteredResults.Count,_currentPage,totalPages);
+            txtStatus.Text = string.Format(
+                ResourceProvider.GetString("LOC_HydraTorrent_PageInfo"),
+                _filteredResults.Count,
+                _currentPage,
+                totalPages);
 
             UpdatePaginationButtons(totalPages);
         }
@@ -882,6 +893,122 @@ namespace HydraTorrent.Views
 
                 pnlPagination.Children.Add(btn);
             }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // СОРТИРОВКА РЕЗУЛЬТАТОВ
+        // ────────────────────────────────────────────────────────────────
+
+        private void HeaderSize_Click(object sender, RoutedEventArgs e)
+        {
+            if (_sortByColumn == "Size")
+            {
+                _sortAscending = !_sortAscending;  // Меняем направление
+            }
+            else
+            {
+                _sortByColumn = "Size";
+                _sortAscending = false;  // По умолчанию: сначала большие
+            }
+
+            ApplySorting();
+            UpdateSortIndicators();
+        }
+
+        private void HeaderDate_Click(object sender, RoutedEventArgs e)
+        {
+            if (_sortByColumn == "UploadDate")
+            {
+                _sortAscending = !_sortAscending;  // Меняем направление
+            }
+            else
+            {
+                _sortByColumn = "UploadDate";
+                _sortAscending = false;  // По умолчанию: сначала новые
+            }
+
+            ApplySorting();
+            UpdateSortIndicators();
+        }
+
+        private void ApplySorting()
+        {
+            if (string.IsNullOrEmpty(_sortByColumn) || _allResults.Count == 0)
+                return;
+
+            try
+            {
+                _allResults = _sortByColumn switch
+                {                    
+                    "Size" => _sortAscending
+                        ? _allResults.OrderBy(r => r.SizeBytes).ToList()
+                        : _allResults.OrderByDescending(r => r.SizeBytes).ToList(),
+                    "UploadDate" => _sortAscending
+                        ? _allResults.OrderBy(r => r.UploadDate).ToList()
+                        : _allResults.OrderByDescending(r => r.UploadDate).ToList(),
+                    _ => _allResults
+                };
+                ApplyLocalFilters();
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Error(ex, "Ошибка сортировки результатов");
+                _sortByColumn = null;
+                ApplyLocalFilters();
+            }
+        }
+
+        private void UpdateSortIndicators()
+        {
+            // ✅ ИСПОЛЬЗУЕМ ЛОКАЛИЗАЦИЮ ВМЕСТО ХАРДКОДА!
+            string sizeText = ResourceProvider.GetString("LOC_HydraTorrent_ColumnSize");
+            string dateText = ResourceProvider.GetString("LOC_HydraTorrent_ColumnDate");
+
+            // Сбросить все индикаторы
+            if (HeaderSize != null)
+                HeaderSize.Content = sizeText;
+
+            if (HeaderDate != null)
+                HeaderDate.Content = dateText;
+
+            // Установить индикатор для активной сортировки
+            string arrow = _sortAscending ? " ↑" : " ↓";
+
+            if (_sortByColumn == "Size" && HeaderSize != null)
+                HeaderSize.Content = sizeText + arrow;
+
+            if (_sortByColumn == "UploadDate" && HeaderDate != null)
+                HeaderDate.Content = dateText + arrow;
+        }
+
+        private long ParseSizeToBytes(string sizeString)
+        {
+            if (string.IsNullOrEmpty(sizeString)) return 0;
+
+            // Пример: "15.8 GB", "2.3 GB", "850 MB"
+            var match = System.Text.RegularExpressions.Regex.Match(
+                sizeString,
+                @"([\d\.]+)\s*(GB|MB|KB|TB)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (!match.Success) return 0;
+
+            // ✅ ИСПРАВЛЕНО: Используем TryParse с инвариантной культурой
+            if (!double.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double value))
+            {
+                return 0;
+            }
+
+            string unit = match.Groups[2].Value.ToUpper();
+            return unit switch
+            {
+                "TB" => (long)(value * 1024 * 1024 * 1024 * 1024),
+                "GB" => (long)(value * 1024 * 1024 * 1024),
+                "MB" => (long)(value * 1024 * 1024),
+                "KB" => (long)(value * 1024),
+                _ => 0
+            };
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -1483,9 +1610,7 @@ namespace HydraTorrent.Views
         private void UpdateQueueUI()
         {
             if (lstQueue == null || txtQueueEmpty == null) return;
-
             var queue = _plugin.DownloadQueue;
-
             if (queue == null || !queue.Any())
             {
                 lstQueue.ItemsSource = null;
@@ -1493,9 +1618,10 @@ namespace HydraTorrent.Views
             }
             else
             {
-                // ✅ ИСКЛЮЧАЕМ активную загрузку из списка очереди
+                // ✅ ИСКЛЮЧАЕМ активную загрузку из списка очереди (позиция 0)
                 var queuedGames = queue
-                    .Where(q => q.QueueStatus != "Completed" && q.QueueStatus != "Downloading")
+                    .Where(q => q.QueueStatus != "Completed"
+                             && q.QueuePosition > 0)  // ← ИСПРАВЛЕНО
                     .OrderBy(q => q.QueuePosition)
                     .ToList();
 

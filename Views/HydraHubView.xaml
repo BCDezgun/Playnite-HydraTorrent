@@ -120,28 +120,51 @@
                                   BorderThickness="0" MouseDoubleClick="LstResults_MouseDoubleClick">
                             <ListView.View>
                                 <GridView>
-                                    <GridViewColumn Header="Название" 
+                                    <GridViewColumn Header="{DynamicResource LOC_HydraTorrent_ColumnName}" 
                                                     Width="{Binding ElementName=lstResults, Path=ActualWidth, 
                                                                     Converter={StaticResource ColumnWidthConverter}, 
-                                                                    ConverterParameter=0.72}">
+                                                                    ConverterParameter=0.69}">
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="White"/>
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
-                                    <GridViewColumn Header="Размер" DisplayMemberBinding="{Binding Size}" 
-                                                    Width="{Binding ElementName=lstResults, Path=ActualWidth, 
-                                                                    Converter={StaticResource ColumnWidthConverter}, 
-                                                                    ConverterParameter=0.10}"/>
-                                    <GridViewColumn Header="Источник" DisplayMemberBinding="{Binding Source}" 
+                                    <GridViewColumn Width="{Binding ElementName=lstResults, Path=ActualWidth,
+                                                    Converter={StaticResource ColumnWidthConverter},
+                                                    ConverterParameter=0.09}">
+                                        <GridViewColumn.Header>
+                                            <GridViewColumnHeader x:Name="HeaderSize" 
+                                                                    Content="{DynamicResource LOC_HydraTorrent_ColumnSize}"
+                                                                    Click="HeaderSize_Click"
+                                                                    Cursor="Hand"/>
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Size}" Foreground="White"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="{DynamicResource LOC_HydraTorrent_ColumnSource}" DisplayMemberBinding="{Binding Source}" 
                                                     Width="{Binding ElementName=lstResults, Path=ActualWidth, 
                                                                     Converter={StaticResource ColumnWidthConverter}, 
                                                                     ConverterParameter=0.125}"/>
-                                    <GridViewColumn Header="Год" DisplayMemberBinding="{Binding Year}" 
-                                                    Width="{Binding ElementName=lstResults, Path=ActualWidth, 
-                                                                    Converter={StaticResource ColumnWidthConverter}, 
-                                                                    ConverterParameter=0.05}"/>
+                                    <GridViewColumn Width="{Binding ElementName=lstResults, Path=ActualWidth,
+                                                    Converter={StaticResource ColumnWidthConverter},
+                                                    ConverterParameter=0.09}">
+                                        <GridViewColumn.Header>
+                                            <GridViewColumnHeader x:Name="HeaderDate" 
+                                                                    Content="{DynamicResource LOC_HydraTorrent_ColumnDate}"
+                                                                    Click="HeaderDate_Click"
+                                                                    Cursor="Hand"/>
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding UploadDate, StringFormat={}{0:dd/MM/yyyy}}" 
+                                                            Foreground="White"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
                                 </GridView>
                             </ListView.View>
                         </ListView>

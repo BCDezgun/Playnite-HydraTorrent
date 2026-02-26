@@ -10,8 +10,10 @@ namespace HydraTorrent.Models
         public string Source { get; set; }
         public string Year { get; set; }
         public string GameName { get; set; }
-        public string TorrentHash { get; set; }   
-        
+        public string TorrentHash { get; set; }
+        public DateTime? UploadDate { get; set; }
+        public long SizeBytes { get; set; }
+
         // ────────────────────────────────────────────────────────────────
         // Свойства для системы очереди загрузок
         // ────────────────────────────────────────────────────────────────
@@ -26,6 +28,7 @@ namespace HydraTorrent.Models
         {
             QueuePosition = -1; // -1 означает "не в очереди"
             QueueStatus = null;
+            SizeBytes = 0;
         }
     }
 }

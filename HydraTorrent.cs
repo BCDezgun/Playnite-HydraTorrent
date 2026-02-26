@@ -112,11 +112,7 @@ namespace HydraTorrent
 
         // ────────────────────────────────────────────────────────────────
         // Хранение очереди загрузок
-        // ────────────────────────────────────────────────────────────────
-
-        // ────────────────────────────────────────────────────────────────
-        // Хранение очереди загрузок
-        // ────────────────────────────────────────────────────────────────
+        // ────────────────────────────────────────────────────────────────       
 
         private string GetQueueFilePath()
         {
@@ -244,14 +240,7 @@ namespace HydraTorrent
             logger.Info($"Авто-старт из очереди: {nextQueued.Name} (позиция {nextQueued.QueuePosition})");
 
             nextQueued.QueueStatus = "Downloading";
-            SaveQueue();
-
-            // Обновляем позиции остальных
-            int pos = 1;
-            foreach (var item in DownloadQueue.Where(q => q.QueueStatus == "Queued").OrderBy(q => q.QueuePosition))
-            {
-                item.QueuePosition = pos++;
-            }
+            RecalculateQueuePositions();
             SaveQueue();
 
             // Возобновляем торрент в qBittorrent

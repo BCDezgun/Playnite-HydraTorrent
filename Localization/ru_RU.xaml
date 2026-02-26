@@ -8,7 +8,15 @@
     <sys:String x:Key="LOC_HydraTorrent_TabSearch">🔍 Поиск репаков</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_TabDownloads">📥 Менеджер загрузок</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_HubTitle">Hydra Hub</sys:String>
-    
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ЗАГОЛОВКИ КОЛОНОК -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_ColumnName">Название</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnSize">Размер</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnSource">Источник</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnDate">Дата</sys:String>
+
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- ПОИСК -->
     <!-- ════════════════════════════════════════════════════════════ -->
@@ -16,6 +24,7 @@
     <sys:String x:Key="LOC_HydraTorrent_SearchPlaceholder">Введите название игры и нажмите Искать</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_EnterGameName">Введите название игры!</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Searching">🔎 Ищем «{0}»...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PageInfo">Найдено: {0} (Страница {1} из {2})</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoResults">Ничего не найдено 😔</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoResultsForFilters">Нет результатов для выбранных фильтров</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_GameAdded">✅ «{0}» добавлена!</sys:String>
