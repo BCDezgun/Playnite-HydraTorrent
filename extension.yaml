@@ -1,8 +1,10 @@
-﻿Id: HydraTorrent_c2177dc7-8179-4098-8b6c-d683ce415279
-Name: Custom Library
+﻿Id: playnite-HydraTorrent-plugin
+Name: HydraTorrent
 Author: BlackChaplin
-Version: 0.1
+Version: 1.0
 Module: HydraTorrent.dll
 Type: GameLibrary
 Icon: icon.png
-RequiredApiVersion: 6.0.0
+Links:
+  - Name: Github
+    Url: https://github.com/BCDezgun/Playnite-HydraTorrent

@@ -959,8 +959,7 @@ namespace HydraTorrent.Views
         }
 
         private void UpdateSortIndicators()
-        {
-            // ✅ ИСПОЛЬЗУЕМ ЛОКАЛИЗАЦИЮ ВМЕСТО ХАРДКОДА!
+        {            
             string sizeText = ResourceProvider.GetString("LOC_HydraTorrent_ColumnSize");
             string dateText = ResourceProvider.GetString("LOC_HydraTorrent_ColumnDate");
 
