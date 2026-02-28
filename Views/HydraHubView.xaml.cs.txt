@@ -253,7 +253,7 @@ namespace HydraTorrent.Views
                 // Для репаков - открываем папку с setup.exe
                 if (!string.IsNullOrEmpty(item.ExecutablePath) && File.Exists(item.ExecutablePath))
                 {
-                    path = System.IO.Path.GetDirectoryName(item.ExecutablePath);
+                    path = Path.GetDirectoryName(item.ExecutablePath);
                 }
 
                 if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
@@ -270,60 +270,6 @@ namespace HydraTorrent.Views
                     PlayniteApi.Dialogs.ShowMessage(
                         ResourceProvider.GetString("LOC_HydraTorrent_FolderNotFound"),
                         ResourceProvider.GetString("LOC_HydraTorrent_Attention"));
-                }
-            }
-        }
-
-        private async void BtnQueueDelete_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.Tag is TorrentResult item && item.GameId.HasValue)
-            {
-                var game = PlayniteApi.Database.Games.Get(item.GameId.Value);
-                var torrentData = _plugin.GetHydraData(game);
-
-                if (PlayniteApi.Dialogs.ShowMessage(
-                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConfirmDeleteTorrent"), item.GameName),
-                    ResourceProvider.GetString("LOC_HydraTorrent_Attention"),
-                    MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                {
-                    // Удаляем из очереди
-                    _plugin.DownloadQueue.Remove(item);
-                    _plugin.SaveQueue();
-                    _plugin.RecalculateQueuePositions();
-
-                    // Удаляем торрент из qBittorrent
-                    if (!string.IsNullOrEmpty(torrentData?.TorrentHash))
-                    {
-                        try
-                        {
-                            var settings = _plugin.GetSettings().Settings;
-                            if (settings.UseQbittorrent)
-                            {
-                                var url = new Uri($"http://{settings.QBittorrentHost}:{settings.QBittorrentPort}");
-                                using var client = new QBittorrentClient(url);
-                                await client.LoginAsync(settings.QBittorrentUsername, settings.QBittorrentPassword ?? "");
-                                await client.DeleteAsync(torrentData.TorrentHash, deleteDownloadedData: false);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            HydraTorrent.logger.Error(ex, $"Ошибка удаления торрента {torrentData.TorrentHash}");
-                        }
-                    }
-
-                    // Удаляем hydra data файл
-                    var hydraDataPath = System.IO.Path.Combine(
-                        _plugin.GetPluginUserDataPath(),
-                        "HydraTorrents",
-                        $"{item.GameId.Value}.json");
-
-                    if (System.IO.File.Exists(hydraDataPath))
-                    {
-                        System.IO.File.Delete(hydraDataPath);
-                    }
-
-                    // Обновляем UI
-                    UpdateQueueUI();
                 }
             }
         }
@@ -443,6 +389,24 @@ namespace HydraTorrent.Views
                 UpdateStatisticsUI();
             }
         }
+
+        // ────────────────────────────────────────────────────────────────
+        // 7. КОНВЕРТЕР
+        // ────────────────────────────────────────────────────────────────
+
+        public class BoolToVisibilityConverter : IValueConverter
+        {
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                return (value is bool b && b) ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                return (value is Visibility v && v == Visibility.Visible);
+            }
+        }
+
 
         private void UIUpdateTimer_Tick(object sender, EventArgs e)
         {
@@ -899,18 +863,14 @@ namespace HydraTorrent.Views
             imgControl.Source = rtb;
         }
 
-        private T FindVisualChild<T>(DependencyObject parent, string name = null) where T : FrameworkElement
+        private T FindVisualChild<T>(DependencyObject parent, string name) where T : FrameworkElement
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
             {
                 var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T frameworkElement)
+                if (child is T frameworkElement && frameworkElement.Name == name)
                 {
-                    // Если имя не указано или совпадает - возвращаем
-                    if (string.IsNullOrEmpty(name) || frameworkElement.Name == name)
-                    {
-                        return frameworkElement;
-                    }
+                    return frameworkElement;
                 }
 
                 var childOfChild = FindVisualChild<T>(child, name);
@@ -1738,8 +1698,8 @@ namespace HydraTorrent.Views
             if (_isPaused)
             {
                 // Иконка Play (возобновить)
-                var pauseIcon = btnPauseResume.Template.FindName("PauseIcon", btnPauseResume) as System.Windows.Shapes.Path;
-                var playIcon = btnPauseResume.Template.FindName("PlayIcon", btnPauseResume) as System.Windows.Shapes.Path;
+                var pauseIcon = btnPauseResume.Template.FindName("PauseIcon", btnPauseResume) as Path;
+                var playIcon = btnPauseResume.Template.FindName("PlayIcon", btnPauseResume) as Path;
 
                 if (pauseIcon != null && playIcon != null)
                 {
@@ -1752,8 +1712,8 @@ namespace HydraTorrent.Views
             else
             {
                 // Иконка Pause (остановить)
-                var pauseIcon = btnPauseResume.Template.FindName("PauseIcon", btnPauseResume) as System.Windows.Shapes.Path;
-                var playIcon = btnPauseResume.Template.FindName("PlayIcon", btnPauseResume) as System.Windows.Shapes.Path;
+                var pauseIcon = btnPauseResume.Template.FindName("PauseIcon", btnPauseResume) as Path;
+                var playIcon = btnPauseResume.Template.FindName("PlayIcon", btnPauseResume) as Path;
 
                 if (pauseIcon != null && playIcon != null)
                 {
@@ -2132,7 +2092,7 @@ namespace HydraTorrent.Views
                 }
             }
         }
-    }    
+    }
 
     public class SourceFilterItem : INotifyPropertyChanged
     {
@@ -2154,25 +2114,14 @@ namespace HydraTorrent.Views
         }
     }
 
-    public class BoolToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return (value is bool b && b) ? Visibility.Visible : Visibility.Collapsed;
-        }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return (value is Visibility v && v == Visibility.Visible);
-        }
-    }
 
     public class InverseBoolConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => !(bool)value;
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => !(bool)value;
-    }    
+    }
 
     public class ColumnWidthConverter : IValueConverter
     {

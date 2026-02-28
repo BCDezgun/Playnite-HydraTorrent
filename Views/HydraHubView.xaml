@@ -8,6 +8,7 @@
     <UserControl.Resources>
         <local:ColumnWidthConverter x:Key="ColumnWidthConverter" />
         <local:InverseBoolConverter x:Key="InverseBoolConverter" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisConverter"/>
 
         <Style x:Key="FilterCheckBoxStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="White"/>
@@ -271,8 +272,8 @@
                                             <GradientStop Color="#00000000" Offset="1.0"/>
                                         </LinearGradientBrush>
                                     </Image.OpacityMask>
-                                </Image>                                
-                                
+                                </Image>
+
                                 <StackPanel HorizontalAlignment="Right" 
             VerticalAlignment="Center" 
             Margin="30,-28,0,0"
@@ -511,239 +512,585 @@
 
                     <Border Grid.Row="1" Margin="10,0,10,10" Background="Transparent" CornerRadius="8" Cursor="Arrow">
                         <Grid>
-                            <!-- Заголовок очереди -->
-                            <TextBlock Text="{DynamicResource LOC_HydraTorrent_DownloadQueueTitle}" 
-                   Foreground="#888" 
-                   FontSize="12" 
-                   FontWeight="Bold" 
-                   Margin="15,10,0,0"
-                   VerticalAlignment="Top" Cursor="Arrow"/>
+                            <!-- TabControl для под-вкладок Очередь/Завершённые -->
+                            <TabControl x:Name="QueueTabControl" 
+                    Background="Transparent" 
+                    BorderThickness="0"
+                    Margin="0,5,0,0">
 
-                            <!-- Список очереди -->
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                      Margin="0,30,0,0">
-                                <ItemsControl x:Name="lstQueue" 
-                          Background="Transparent" 
-                          Foreground="White" Cursor="Arrow">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="#20FFFFFF" 
-                Margin="10,5" 
-                Padding="15,10" 
-                CornerRadius="6"
-                BorderBrush="#30FFFFFF"
-                BorderThickness="1">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <!-- ✅ КОЛОНКА 0: Иконка игры (60px) -->
-                                                        <ColumnDefinition Width="60"/>
-                                                        <!-- ✅ КОЛОНКА 1: Информация об игре (*) -->
-                                                        <ColumnDefinition Width="*"/>
-                                                        <!-- ✅ КОЛОНКА 2: Кнопки управления (Auto) -->
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <!-- ✅ ИКОНКА ИГРЫ (Grid.Column="0") -->
-                                                    <Border Grid.Column="0" 
-                        Width="50" 
-                        Height="50" 
-                        CornerRadius="6"
-                        Background="#30000000"
-                        Margin="0,0,10,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center">
-                                                        <Image x:Name="imgQueueCover" 
-                           Stretch="UniformToFill"
-                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                    </Border>
-
-                                                    <!-- Информация об игре (Grid.Column="1") -->
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding GameName}" 
-                                                                   Foreground="White" 
-                                                                   FontSize="14" 
-                                                                   FontWeight="SemiBold"
-                                                                   TextTrimming="CharacterEllipsis"/>
-                                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                                            <TextBlock Text="{Binding Size}" 
-                                   Foreground="#AAA" 
-                                   FontSize="11"/>
-                                                            <TextBlock Text=" • " 
-                                   Foreground="#AAA" 
-                                   FontSize="11" 
-                                   Margin="5,0"/>
-                                                            <TextBlock Foreground="#AAA" 
-                                   FontSize="11">
-                            <Run Text="{DynamicResource LOC_HydraTorrent_Position}"/>
-                            <Run Text="{Binding QueuePosition}" 
-                                 FontWeight="Bold" 
-                                 Foreground="#4FC3F7"/>
-                                                            </TextBlock>
-                                                            <TextBlock Text=" • " 
-                                   Foreground="#AAA" 
-                                   FontSize="11" 
-                                   Margin="5,0"/>
-                                                            <TextBlock Foreground="#AAA" 
-                                   FontSize="11">
-                            <Run Text="{DynamicResource LOC_HydraTorrent_Status}"/>
-                            <Run Text="{Binding QueueStatus}" 
-                                 FontWeight="Bold">
-                                <Run.Style>
-                                    <Style TargetType="Run">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Downloading">
-                                                <Setter Property="Foreground" Value="#2ECC71"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Queued">
-                                                <Setter Property="Foreground" Value="#F39C12"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Paused">
-                                                <Setter Property="Foreground" Value="#95A5A6"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding QueueStatus}" Value="Completed">
-                                                <Setter Property="Foreground" Value="#2ECC71"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
+                                <!-- Стиль для TabItem -->
+                                <TabControl.Resources>
+                                    <Style TargetType="TabItem">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="TabItem">
+                                                    <Grid Name="Panel">
+                                                        <ContentPresenter x:Name="ContentSite"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center"
+                                                      ContentSource="Header"
+                                                      Margin="15,8"/>
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="Panel" Property="Background" Value="#30FFFFFF"/>
+                                                            <Setter Property="Foreground" Value="White"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="False">
+                                                            <Setter TargetName="Panel" Property="Background" Value="Transparent"/>
+                                                            <Setter Property="Foreground" Value="#888"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
                                     </Style>
-                                </Run.Style>
-                            </Run>
-                                                            </TextBlock>
-                                                        </StackPanel>
-                                                    </StackPanel>
+                                </TabControl.Resources>
 
-                                                    <!-- Кнопки управления (Grid.Column="2") -->
-                                                    <StackPanel Grid.Column="2" 
-                            Orientation="Horizontal" 
-                            VerticalAlignment="Center"
-                            Margin="10,0,0,0">
-                                                        <!-- Вверх -->
-                                                        <Button x:Name="btnUp" 
-                            Width="32" 
-                            Height="32" 
-                            Margin="0,0,5,0"
-                            Background="#30FFFFFF"
-                            BorderThickness="0"
-                            Cursor="Hand"
-                            ToolTip="{DynamicResource LOC_HydraTorrent_MoveUp}"
-                            Click="BtnQueueUp_Click">
-                                                            <Button.Template>
-                                                                <ControlTemplate TargetType="Button">
-                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
-                                                                        <Path Data="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z" 
-                                          Fill="#CCC" 
-                                          Stretch="Uniform" 
-                                          Width="14" 
-                                          Height="14"/>
-                                                                    </Border>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter Property="Background" Value="#50FFFFFF"/>
-                                                                        </Trigger>
-                                                                    </ControlTemplate.Triggers>
-                                                                </ControlTemplate>
-                                                            </Button.Template>
-                                                        </Button>
+                                <!-- ═══════════════════════════════════════════════════════════ -->
+                                <!-- ПОД-ВКЛАДКА: ОЧЕРЕДЬ -->
+                                <!-- ═══════════════════════════════════════════════════════════ -->
+                                <TabItem Header="{DynamicResource LOC_HydraTorrent_TabQueue}" Cursor="Hand">
+                                    <Grid>
+                                        <!-- Пустая очередь -->
+                                        <TextBlock x:Name="txtQueueEmpty"
+                               Text="{DynamicResource LOC_HydraTorrent_QueueEmpty}"
+                               Foreground="#888" FontSize="14" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="Collapsed"/>
 
-                                                        <!-- Вниз -->
-                                                        <Button x:Name="btnDown" 
-                            Width="32" 
-                            Height="32" 
-                            Margin="0,0,5,0"
-                            Background="#30FFFFFF"
-                            BorderThickness="0"
-                            Cursor="Hand"
-                            ToolTip="{DynamicResource LOC_HydraTorrent_MoveDown}"
-                            Click="BtnQueueDown_Click">
-                                                            <Button.Template>
-                                                                <ControlTemplate TargetType="Button">
-                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
-                                                                        <Path Data="M7.41,8.59L12,13.17L16.59,8.59L18,10L12,16L6,10L7.41,8.59Z" 
-                                          Fill="#CCC" 
-                                          Stretch="Uniform" 
-                                          Width="14" 
-                                          Height="14"/>
-                                                                    </Border>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter Property="Background" Value="#50FFFFFF"/>
-                                                                        </Trigger>
-                                                                    </ControlTemplate.Triggers>
-                                                                </ControlTemplate>
-                                                            </Button.Template>
-                                                        </Button>
+                                        <!-- Список очереди -->
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="5">
+                                            <ItemsControl x:Name="lstQueue" 
+                                      Background="Transparent" 
+                                      Foreground="White" Cursor="Arrow">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#20FFFFFF" 
+                                            Margin="10,5" 
+                                            Padding="15,10" 
+                                            CornerRadius="6"
+                                            BorderBrush="#30FFFFFF"
+                                            BorderThickness="1">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="60"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
 
-                                                        <!-- Запустить принудительно -->
-                                                        <Button x:Name="btnForceStart" 
-                            Width="32" 
-                            Height="32" 
-                            Margin="0,0,5,0"
-                            Background="#2ECC71"
-                            BorderThickness="0"
-                            Cursor="Hand"
-                            ToolTip="{DynamicResource LOC_HydraTorrent_ForceStart}"
-                            Click="BtnQueueForceStart_Click">
-                                                            <Button.Template>
-                                                                <ControlTemplate TargetType="Button">
-                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
-                                                                        <Path Data="M8,5.14V19.14L19,12.14L8,5.14Z" 
-                                          Fill="White" 
-                                          Stretch="Uniform" 
-                                          Width="14" 
-                                          Height="14"/>
-                                                                    </Border>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter Property="Background" Value="#27AE60"/>
-                                                                        </Trigger>
-                                                                    </ControlTemplate.Triggers>
-                                                                </ControlTemplate>
-                                                            </Button.Template>
-                                                        </Button>
+                                                                <!-- Иконка игры -->
+                                                                <Border Grid.Column="0" 
+                                                    Width="50" 
+                                                    Height="50" 
+                                                    CornerRadius="6"
+                                                    Background="#30000000"
+                                                    Margin="0,0,10,0"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center">
+                                                                    <Image x:Name="imgQueueCover" 
+                                                       Stretch="UniformToFill"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                </Border>
 
-                                                        <!-- Удалить из очереди -->
-                                                        <Button x:Name="btnRemove" 
-                            Width="32" 
-                            Height="32"
-                            Background="#E74C3C"
-                            BorderThickness="0"
-                            Cursor="Hand"
-                            ToolTip="{DynamicResource LOC_HydraTorrent_RemoveFromQueue}"
-                            Click="BtnQueueRemove_Click">
-                                                            <Button.Template>
-                                                                <ControlTemplate TargetType="Button">
-                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
-                                                                        <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" 
-                                          Fill="White" 
-                                          Stretch="Uniform" 
-                                          Width="14" 
-                                          Height="14"/>
-                                                                    </Border>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter Property="Background" Value="#C0392B"/>
-                                                                        </Trigger>
-                                                                    </ControlTemplate.Triggers>
-                                                                </ControlTemplate>
-                                                            </Button.Template>
-                                                        </Button>
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                                                                <!-- Информация об игре -->
+                                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding GameName}" 
+                                                           Foreground="White" 
+                                                           FontSize="14" 
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                                        <TextBlock Text="{Binding Size}" 
+                                                               Foreground="#AAA" 
+                                                               FontSize="11"/>
+                                                                        <TextBlock Text=" • " 
+                                                               Foreground="#AAA" 
+                                                               FontSize="11" 
+                                                               Margin="5,0"/>
+                                                                        <TextBlock Foreground="#AAA" FontSize="11">
+                                                        <Run Text="{DynamicResource LOC_HydraTorrent_Position}"/>
+                                                        <Run Text="{Binding QueuePosition}" 
+                                                             FontWeight="Bold" 
+                                                             Foreground="#4FC3F7"/>
+                                                                        </TextBlock>
+                                                                        <TextBlock Text=" • " 
+                                                               Foreground="#AAA" 
+                                                               FontSize="11" 
+                                                               Margin="5,0"/>
+                                                                        <TextBlock Foreground="#AAA" FontSize="11">
+                                                        <Run Text="{DynamicResource LOC_HydraTorrent_Status}"/>
+                                                        <Run Text="{Binding QueueStatus}" FontWeight="Bold">
+                                                            <Run.Style>
+                                                                <Style TargetType="Run">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding QueueStatus}" Value="Downloading">
+                                                                            <Setter Property="Foreground" Value="#2ECC71"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding QueueStatus}" Value="Queued">
+                                                                            <Setter Property="Foreground" Value="#F39C12"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding QueueStatus}" Value="Paused">
+                                                                            <Setter Property="Foreground" Value="#95A5A6"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Run.Style>
+                                                        </Run>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+                                                                </StackPanel>
 
-                            <!-- Плейсхолдер если очередь пуста -->
-                            <TextBlock x:Name="txtQueueEmpty" 
-                   Text="{DynamicResource LOC_HydraTorrent_QueueEmpty}"
-                   VerticalAlignment="Center" 
-                   HorizontalAlignment="Center" 
-                   Foreground="#60FFFFFF" 
-                   FontSize="14" Cursor="Arrow"/>
+                                                                <!-- Кнопки управления -->
+                                                                <StackPanel Grid.Column="2" 
+                                                        Orientation="Horizontal" 
+                                                        VerticalAlignment="Center"
+                                                        Margin="10,0,0,0">
+                                                                    <!-- Вверх -->
+                                                                    <Button Width="32" Height="32" Margin="0,0,5,0"
+                                                        Background="#30FFFFFF" BorderThickness="0" Cursor="Hand"
+                                                        ToolTip="{DynamicResource LOC_HydraTorrent_MoveUp}"
+                                                        Click="BtnQueueUp_Click">
+                                                                        <Button.Template>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                                    <Path Data="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z" 
+                                                                      Fill="#CCC" Stretch="Uniform" Width="14" Height="14"/>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                                        <Setter Property="Background" Value="#50FFFFFF"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Button.Template>
+                                                                    </Button>
+
+                                                                    <!-- Вниз -->
+                                                                    <Button Width="32" Height="32" Margin="0,0,5,0"
+                                                        Background="#30FFFFFF" BorderThickness="0" Cursor="Hand"
+                                                        ToolTip="{DynamicResource LOC_HydraTorrent_MoveDown}"
+                                                        Click="BtnQueueDown_Click">
+                                                                        <Button.Template>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                                    <Path Data="M7.41,8.59L12,13.17L16.59,8.59L18,10L12,16L6,10L7.41,8.59Z" 
+                                                                      Fill="#CCC" Stretch="Uniform" Width="14" Height="14"/>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                                        <Setter Property="Background" Value="#50FFFFFF"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Button.Template>
+                                                                    </Button>
+
+                                                                    <!-- Удалить -->
+                                                                    <Button Width="32" Height="32"
+                                                        Background="#30FFFFFF" BorderThickness="0" Cursor="Hand"
+                                                        ToolTip="{DynamicResource LOC_HydraTorrent_Delete}"
+                                                        Click="BtnQueueDelete_Click">
+                                                                        <Button.Template>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                                    <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" 
+                                                                      Fill="#FF5555" Stretch="Uniform" Width="12" Height="12"/>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                                        <Setter Property="Background" Value="#50FFFFFF"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Button.Template>
+                                                                    </Button>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </TabItem>
+
+                                <!-- ═══════════════════════════════════════════════════════════ -->
+                                <!-- ПОД-ВКЛАДКА: ЗАВЕРШЁННЫЕ -->
+                                <!-- ═══════════════════════════════════════════════════════════ -->
+                                <TabItem Header="{DynamicResource LOC_HydraTorrent_TabCompleted}" Cursor="Hand">
+                                    <Grid>
+                                        <!-- Кнопка очистки -->
+                                        <Button x:Name="btnClearCompleted" 
+                            Content="{DynamicResource LOC_HydraTorrent_CompletedClearAll}"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,5,10,0" Padding="12,5"
+                            Background="#30FFFFFF" Foreground="White"
+                            Click="BtnClearCompleted_Click" Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+
+                                        <!-- Пустой список -->
+                                        <TextBlock x:Name="txtCompletedEmpty"
+                               Text="{DynamicResource LOC_HydraTorrent_CompletedEmpty}"
+                               Foreground="#888" FontSize="14" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="Collapsed"/>
+
+                                        <!-- Список завершённых -->
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="5,35,5,5">
+                                            <ItemsControl x:Name="lstCompleted" 
+                                      Background="Transparent" 
+                                      Foreground="White">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#20FFFFFF" 
+                                            Margin="10,5" 
+                                            Padding="15,10" 
+                                            CornerRadius="6"
+                                            BorderBrush="#30FFFFFF"
+                                            BorderThickness="1">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="60"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <!-- Иконка игры -->
+                                                                <Border Grid.Column="0" 
+                                                    Width="50" Height="50" 
+                                                    CornerRadius="6"
+                                                    Background="#30000000"
+                                                    Margin="0,0,10,0">
+                                                                    <Image Stretch="UniformToFill"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                </Border>
+
+                                                                <!-- Информация -->
+                                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding GameName}" 
+                                                           Foreground="White" FontSize="14" 
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                                        <!-- Тип -->
+                                                                        <TextBlock Foreground="White" FontSize="11">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding DetectedType}" Value="Portable">
+                                                                                            <Setter Property="Text" Value="{DynamicResource LOC_HydraTorrent_TypePortable}"/>
+                                                                                            <Setter Property="Foreground" Value="#2ECC71"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding DetectedType}" Value="Repack">
+                                                                                            <Setter Property="Text" Value="{DynamicResource LOC_HydraTorrent_TypeRepack}"/>
+                                                                                            <Setter Property="Foreground" Value="#F39C12"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding DetectedType}" Value="Unknown">
+                                                                                            <Setter Property="Text" Value="{DynamicResource LOC_HydraTorrent_TypeUnknown}"/>
+                                                                                            <Setter Property="Foreground" Value="#888"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+
+                                                                        <TextBlock Text=" • " Foreground="#AAA" FontSize="11" Margin="5,0"/>
+
+                                                                        <!-- Размер -->
+                                                                        <TextBlock Text="{Binding Size}" Foreground="#AAA" FontSize="11"/>
+
+                                                                        <TextBlock Text=" • " Foreground="#AAA" FontSize="11" Margin="5,0"/>
+
+                                                                        <!-- Статус -->
+                                                                        <Path Data="M9,16.17L4.83,12L3.41,13.41L9,19L21,7L19.59,5.59L9,16.17Z" 
+                                                          Fill="#2ECC71" Stretch="Uniform" Width="12" Height="12"
+                                                          Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisConverter}}"
+                                                          ToolTip="{DynamicResource LOC_HydraTorrent_StatusConfigured}"/>
+
+                                                                        <TextBlock Text=" • " Foreground="#AAA" FontSize="11" Margin="5,0"/>
+
+                                                                        <!-- Дата -->
+                                                                        <TextBlock Text="{Binding CompletedAt, StringFormat={}{0:dd/MM/yyyy}}" 
+                                                               Foreground="#AAA" FontSize="11"/>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+
+                                                                <!-- Кнопки -->
+                                                                <StackPanel Grid.Column="2" 
+                                                        Orientation="Horizontal" 
+                                                        VerticalAlignment="Center">
+                                                                    <!-- Открыть папку -->
+                                                                    <Button Content="📁" Width="32" Height="32" Margin="0,0,5,0"
+                                                        ToolTip="{DynamicResource LOC_HydraTorrent_CompletedOpenFolder}"
+                                                        Click="BtnOpenCompletedFolder_Click" Tag="{Binding}"
+                                                        Background="#30FFFFFF" Cursor="Hand">
+                                                                        <Button.Template>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                </Border>
+                                                                            </ControlTemplate>
+                                                                        </Button.Template>
+                                                                    </Button>
+
+                                                                    <!-- Удалить из списка -->
+                                                                    <Button Content="✕" Width="32" Height="32"
+                                                        ToolTip="{DynamicResource LOC_HydraTorrent_CompletedRemove}"
+                                                        Click="BtnRemoveCompleted_Click" Tag="{Binding}"
+                                                        Background="#30FFFFFF" Foreground="#FF5555" Cursor="Hand">
+                                                                        <Button.Template>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                </Border>
+                                                                            </ControlTemplate>
+                                                                        </Button.Template>
+                                                                    </Button>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </TabItem>
+
+                            </TabControl>
                         </Grid>
                     </Border>
                 </Grid>
+            </TabItem>
+            <TabItem Header="{DynamicResource LOC_HydraTorrent_TabStatistics}" Cursor="Hand">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="15">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <!-- КАРТОЧКИ СТАТИСТИКИ -->
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <UniformGrid Grid.Row="0" Columns="4" Margin="0,0,0,25">
+
+                            <!-- Всего загрузок -->
+                            <Border Background="#15FFFFFF" CornerRadius="10" Padding="20" Margin="0,0,10,0">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsTotalDownloads}" 
+                                   Foreground="#888" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="txtStatsTotalDownloads" Text="0" 
+                                   Foreground="White" FontSize="36" FontWeight="Bold" Margin="0,8,0,0"/>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsGames}" 
+                                   Foreground="#666" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Общий размер -->
+                            <Border Background="#15FFFFFF" CornerRadius="10" Padding="20" Margin="10,0,10,0">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsTotalSize}" 
+                                   Foreground="#888" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="txtStatsTotalSize" Text="0 GB" 
+                                   Foreground="#4FC3F7" FontSize="36" FontWeight="Bold" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Общее время -->
+                            <Border Background="#15FFFFFF" CornerRadius="10" Padding="20" Margin="10,0,10,0">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsTotalTime}" 
+                                   Foreground="#888" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="txtStatsTotalTime" Text="-" 
+                                   Foreground="#F39C12" FontSize="36" FontWeight="Bold" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Средняя скорость -->
+                            <Border Background="#15FFFFFF" CornerRadius="10" Padding="20" Margin="10,0,0,0">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsAvgSpeed}" 
+                                   Foreground="#888" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="txtStatsAvgSpeed" Text="-" 
+                                   Foreground="#2ECC71" FontSize="36" FontWeight="Bold" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <!-- ТИПЫ ИГР + ТОП ИГР -->
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <Grid Grid.Row="1" Margin="0,0,0,25">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Типы игр -->
+                            <Border Grid.Column="0" Background="#15FFFFFF" CornerRadius="10" Padding="25" Margin="0,0,10,0">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsGamesByType}" 
+                                   Foreground="White" FontSize="14" FontWeight="Bold" Margin="0,0,0,20"/>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Portable -->
+                                        <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                            <Border Width="80" Height="80" CornerRadius="40" Background="#202ECC71" Margin="0,0,0,10">
+                                                <TextBlock x:Name="txtStatsPortables" Text="0" 
+                                               Foreground="#2ECC71" FontSize="28" FontWeight="Bold"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsPortables}" 
+                                           Foreground="#AAA" FontSize="12" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Repack -->
+                                        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                            <Border Width="80" Height="80" CornerRadius="40" Background="#20F39C12" Margin="0,0,0,10">
+                                                <TextBlock x:Name="txtStatsRepacks" Text="0" 
+                                               Foreground="#F39C12" FontSize="28" FontWeight="Bold"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsRepacks}" 
+                                           Foreground="#AAA" FontSize="12" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Прогресс-бар соотношения -->
+                                    <Grid Height="8" Margin="0,25,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition x:Name="colPortable" Width="*"/>
+                                            <ColumnDefinition x:Name="colRepack" Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Background="#2ECC71" CornerRadius="4,0,0,4"/>
+                                        <Border Grid.Column="1" Background="#F39C12" CornerRadius="0,4,4,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Топ по размеру -->
+                            <Border Grid.Column="1" Background="#15FFFFFF" CornerRadius="10" Padding="25" Margin="10,0,0,0">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsTopGames}" 
+                                   Foreground="White" FontSize="14" FontWeight="Bold" Margin="0,0,0,15"/>
+
+                                    <ItemsControl x:Name="lstTopGames" MaxHeight="200">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="25"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBlock Grid.Column="0" Text="{Binding Rank}" 
+                                                   Foreground="#666" FontSize="13" FontWeight="Bold"
+                                                   VerticalAlignment="Center"/>
+
+                                                    <TextBlock Grid.Column="1" Text="{Binding GameName}" 
+                                                   Foreground="White" FontSize="13" 
+                                                   TextTrimming="CharacterEllipsis" Margin="10,0,10,0"
+                                                   VerticalAlignment="Center"/>
+
+                                                    <TextBlock Grid.Column="2" Text="{Binding Size}" 
+                                                   Foreground="#4FC3F7" FontSize="12"
+                                                   VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock x:Name="txtNoTopGames" 
+                                   Text="{DynamicResource LOC_HydraTorrent_StatsNoData}"
+                                   Foreground="#666" FontSize="12" HorizontalAlignment="Center" Margin="0,30,0,0"
+                                   Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <!-- ДОПОЛНИТЕЛЬНАЯ СТАТИСТИКА -->
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Общий Upload -->
+                            <Border Grid.Column="0" Background="#15FFFFFF" CornerRadius="10" Padding="20" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsTotalUploaded}" 
+                                   Foreground="#888" FontSize="11"/>
+                                    <TextBlock x:Name="txtStatsTotalUploaded" Text="0 GB" 
+                                   Foreground="#2ECC71" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Общий Ratio -->
+                            <Border Grid.Column="1" Background="#15FFFFFF" CornerRadius="10" Padding="20" Margin="10,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_StatsOverallRatio}" 
+                                   Foreground="#888" FontSize="11"/>
+                                    <TextBlock x:Name="txtStatsOverallRatio" Text="0.00" 
+                                   Foreground="#4FC3F7" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Кнопка сброса -->
+                            <Border Grid.Column="2" Background="#15FFFFFF" CornerRadius="10" Padding="20" Margin="10,0,0,0">
+                                <Button x:Name="btnResetStats" 
+                            Content="{DynamicResource LOC_HydraTorrent_StatsReset}"
+                            Padding="20,10" Background="#25FF5555" Foreground="White"
+                            Click="BtnResetStats_Click" Cursor="Hand" HorizontalAlignment="Right">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </Border>
+                        </Grid>
+
+                    </Grid>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </DockPanel>
