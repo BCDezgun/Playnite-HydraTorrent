@@ -10,6 +10,7 @@ using Playnite.SDK.Plugins;
 using QBittorrent.Client;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -480,11 +481,106 @@ namespace HydraTorrent
 
             public override void Install(InstallActionArgs args)
             {
+                // ✅ НОВОЕ: Проверяем, загружен ли уже торрент
+                if (!string.IsNullOrEmpty(_torrentData.DownloadPath) &&
+                    Directory.Exists(_torrentData.DownloadPath))
+                {
+                    // Торрент уже загружен - ищем setup.exe
+                    var setupPath = FindSetupExe(_torrentData.DownloadPath);
+                    if (setupPath != null)
+                    {
+                        // Запускаем setup.exe
+                        StartSetupExe(setupPath);
+                        return;
+                    }
+                }
+
+                // Торрент не загружен - начинаем загрузку
                 _plugin.InstallGame(Game, _torrentData);
 
                 _watcherTimer = new System.Timers.Timer(5000);
                 _watcherTimer.Elapsed += WatcherTimer_Elapsed;
                 _watcherTimer.Start();
+            }
+
+            private string FindSetupExe(string downloadPath)
+            {
+                try
+                {
+                    // Ищем setup.exe в корне
+                    var rootSetup = Path.Combine(downloadPath, "setup.exe");
+                    if (File.Exists(rootSetup))
+                        return rootSetup;
+
+                    // Ищем во вложенных папках (1 уровень)
+                    foreach (var dir in Directory.GetDirectories(downloadPath))
+                    {
+                        var nestedSetup = Path.Combine(dir, "setup.exe");
+                        if (File.Exists(nestedSetup))
+                            return nestedSetup;
+                    }
+                }
+                catch { }
+                return null;
+            }
+
+            private void StartSetupExe(string setupPath)
+            {
+                try
+                {
+                    logger.Info($"Запуск setup.exe: {setupPath}");
+
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = setupPath,
+                        WorkingDirectory = Path.GetDirectoryName(setupPath),
+                        UseShellExecute = true
+                    });
+
+                    // Игра начинает устанавливаться
+                    Game.IsInstalling = true;
+                    _plugin.PlayniteApi.Database.Games.Update(Game);
+
+                    // Запускаем мониторинг завершения установки
+                    StartInstallationWatcher();
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, $"Ошибка запуска setup.exe: {setupPath}");
+                }
+            }
+
+            private void StartInstallationWatcher()
+            {
+                // Следим за процессом установки
+                // Когда пользователь закончит установку, нужно обновить игру
+                _watcherTimer = new System.Timers.Timer(10000);
+                _watcherTimer.Elapsed += (s, e) =>
+                {
+                    // Здесь можно проверить, установлена ли игра
+                    // Например, поискать .exe в InstallDirectory
+                    CheckInstallationComplete();
+                };
+                _watcherTimer.Start();
+            }
+
+            private void CheckInstallationComplete()
+            {
+                // TODO: Определить, что установка завершена
+                // Например, если игра имеет InstallDirectory и там есть исполняемый файл
+                if (!string.IsNullOrEmpty(Game.InstallDirectory) &&
+                    Directory.Exists(Game.InstallDirectory))
+                {
+                    var executables = Directory.GetFiles(Game.InstallDirectory, "*.exe", SearchOption.TopDirectoryOnly);
+                    if (executables.Length > 0)
+                    {
+                        _watcherTimer?.Stop();
+                        Game.IsInstalling = false;
+                        Game.IsInstalled = true;
+                        _plugin.PlayniteApi.Database.Games.Update(Game);
+                        InvokeOnInstalled(new GameInstalledEventArgs());
+                    }
+                }
             }
 
             private void WatcherTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)

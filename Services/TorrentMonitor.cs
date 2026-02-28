@@ -226,16 +226,12 @@ namespace HydraTorrent.Services
 
                         if (item.GameId.HasValue)
                         {
-                            var game = _api.Database.Games.Get(item.GameId.Value);
-                            if (game != null)
-                            {
-                                game.IsInstalled = true;
-                                game.IsInstalling = false;
-                                _api.Database.Games.Update(game);
-                                HydraTorrent.logger.Info($"[DEBUG] Игра обновлена: IsInstalled=true");
-                            }
+                            // ❌ НЕ обновляем IsInstalled/IsInstalling здесь!
+                            // GameSetupService сам установит правильные значения в зависимости от типа игры:
+                            // - Portable: IsInstalled=true, IsInstalling=false, создаёт Play Action
+                            // - Repack: IsInstalled=false, IsInstalling=true, создаёт Install Action
 
-                            // ✅ НОВОЕ: Запуск пост-обработки
+                            // ✅ Запуск пост-обработки
                             if (!string.IsNullOrEmpty(item.DownloadPath))
                             {
                                 try

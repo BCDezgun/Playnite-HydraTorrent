@@ -128,7 +128,7 @@
     <sys:String x:Key="LOC_HydraTorrent_AddedToQueue">«{0}» добавлена в очередь (позиция {1})</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_DownloadStarted">Начата загрузка «{0}»</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ResumedDownload">Возобновлена загрузка: {0}</sys:String>
-    
+
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- НАСТРОЙКИ -->
     <!-- ════════════════════════════════════════════════════════════ -->

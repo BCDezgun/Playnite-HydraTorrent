@@ -1006,8 +1006,9 @@ namespace HydraTorrent.Services
         {
             try
             {
-                game.IsInstalled = true;
-                game.IsInstalling = false;
+                // Для портативной игры: УЖЕ УСТАНОВЛЕНА и готова к запуску
+                game.IsInstalled = true;     // ✅ Игра установлена
+                game.IsInstalling = false;   // ✅ Установка завершена
                 game.InstallDirectory = candidate.Directory;
 
                 // Создаём действие для запуска
@@ -1017,18 +1018,26 @@ namespace HydraTorrent.Services
                     Path = candidate.FilePath,
                     WorkingDir = candidate.Directory,
                     Name = "Play",
-                    IsPlayAction = true
+                    IsPlayAction = true  // ✅ Это Play действие
                 };
 
-                // Удаляем старые Play действия и добавляем новое
+                // Удаляем старые действия
                 if (game.GameActions == null)
                 {
                     game.GameActions = new System.Collections.ObjectModel.ObservableCollection<GameAction>();
                 }
                 else
                 {
+                    // Удаляем старые Play действия
                     var playActions = game.GameActions.Where(a => a.IsPlayAction).ToList();
                     foreach (var action in playActions)
+                    {
+                        game.GameActions.Remove(action);
+                    }
+
+                    // ❌ УДАЛИТЬ старые Install действия если есть
+                    var installActions = game.GameActions.Where(a => !a.IsPlayAction).ToList();
+                    foreach (var action in installActions)
                     {
                         game.GameActions.Remove(action);
                     }
@@ -1053,7 +1062,9 @@ namespace HydraTorrent.Services
         {
             try
             {
-                game.IsInstalling = true;
+                // Для репака: игра ГОТОВА К УСТАНОВКЕ, но ещё НЕ УСТАНОВЛЕНА
+                game.IsInstalled = false;        // ✅ ДОБАВИТЬ! Игра ещё не установлена
+                game.IsInstalling = false;        // ✅ ИЗМЕНИТЬ! Установка ещё не началась - ждём пользователя
                 game.InstallDirectory = Path.GetDirectoryName(setupPath);
 
                 // Создаём действие для установки
@@ -1063,7 +1074,7 @@ namespace HydraTorrent.Services
                     Path = setupPath,
                     WorkingDir = Path.GetDirectoryName(setupPath),
                     Name = "Install",
-                    IsPlayAction = false // Это не Play действие
+                    IsPlayAction = false  // Это НЕ Play действие
                 };
 
                 // Добавляем действие
@@ -1073,8 +1084,17 @@ namespace HydraTorrent.Services
                 }
 
                 // Удаляем старые Install действия
-                var installActions = game.GameActions.Where(a => !a.IsPlayAction && a.Name == "Install").ToList();
-                foreach (var action in installActions)
+                var oldInstallActions = game.GameActions
+                    .Where(a => !a.IsPlayAction && a.Name == "Install")
+                    .ToList();
+                foreach (var action in oldInstallActions)
+                {
+                    game.GameActions.Remove(action);
+                }
+
+                // ❌ УДАЛИТЬ старые Play действия если есть (на случай повторной обработки)
+                var oldPlayActions = game.GameActions.Where(a => a.IsPlayAction).ToList();
+                foreach (var action in oldPlayActions)
                 {
                     game.GameActions.Remove(action);
                 }
