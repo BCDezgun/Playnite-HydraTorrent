@@ -447,6 +447,7 @@
                                                 Margin="0,0,10,0" 
                                                 Cursor="Hand" 
                                                 Click="btnSettings_Click"
+                                                ToolTip="{DynamicResource LOC_HydraTorrent_SettingsMenu}"
                                                 Visibility="Hidden">
                                             <Button.Template>
                                                 <ControlTemplate TargetType="Button">
@@ -581,16 +582,13 @@
 
                                                                 <!-- Иконка игры -->
                                                                 <Border Grid.Column="0" 
-                                                    Width="50" 
-                                                    Height="50" 
-                                                    CornerRadius="6"
-                                                    Background="#30000000"
-                                                    Margin="0,0,10,0"
-                                                    HorizontalAlignment="Left"
-                                                    VerticalAlignment="Center">
-                                                                    <Image x:Name="imgQueueCover" 
-                                                       Stretch="UniformToFill"
-                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                        Width="50" Height="50" 
+                                                                        CornerRadius="6"
+                                                                        Background="#30000000"
+                                                                        Margin="0,0,10,0">
+                                                                    <Image x:Name="imgCompletedCover"
+                                                                            Stretch="UniformToFill"
+                                                                            RenderOptions.BitmapScalingMode="HighQuality"/>
                                                                 </Border>
 
                                                                 <!-- Информация об игре -->

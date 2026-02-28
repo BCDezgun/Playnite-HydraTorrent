@@ -23,6 +23,8 @@
     <sys:String x:Key="LOC_HydraTorrent_ResultsFound">Найдено: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Sources">Источники</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_AllSources">Все источники</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SearchFilters">Фильтры поиска</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoreFilters">Больше фильтров скоро...</sys:String>
 
     <!-- Пагинация -->
     <sys:String x:Key="LOC_HydraTorrent_PageInfo">Страница {1} из {2} ({0} результатов)</sys:String>
@@ -61,6 +63,9 @@
     <sys:String x:Key="LOC_HydraTorrent_Remaining">Осталось:</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoETA">—</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_PercentFormat">{0:F1}% ({1:F2} / {2:F2} GB)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MaxSpeed">Макс. скорость</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Seeds">Сиды</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Peers">Пиры</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          ОЧЕРЕДЬ
@@ -127,8 +132,13 @@
     <sys:String x:Key="LOC_HydraTorrent_Resume">Продолжить</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Cancel">Отменить</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Delete">Удалить</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteTorrent">Удалить торрент «{0}» из qBittorrent? Файлы будут сохранены.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteTorrent">Удалить торрент '{0}' из qBittorrent и все загруженные файлы?</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteGame">Удалить игру из библиотеки? Файлы останутся на диске.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentAndFiles">Удалить торрент и файлы</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SettingsMenu">Меню действий</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentTitle">Удаление торрента</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteFromLibraryTitle">Удаление из библиотеки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteLibrary">Вы желаете удалить игру из библиотеки Playnite?</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          УВЕДОМЛЕНИЯ
@@ -245,5 +255,11 @@
     <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherLarge">Большой launcher</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherProductName">Launcher: ProductName совпадает</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherPublisher">Launcher: известный издатель</sys:String>
+
+    <!-- Удаление из списка завершённых -->
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromList">Удалить из списка</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmRemoveCompleted">Удалить &quot;{0}&quot; из списка завершённых?&#x0a;Торрент будет удалён из qBittorrent, но скачанные файлы сохранятся.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ClearCompletedList">Очистить список</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmClearCompleted">Очистить весь список завершённых загрузок?&#x0a;Все торренты будут удалены из qBittorrent, но скачанные файлы сохранятся.</sys:String>
 
 </ResourceDictionary>

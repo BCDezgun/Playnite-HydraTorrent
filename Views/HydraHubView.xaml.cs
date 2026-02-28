@@ -216,7 +216,8 @@ namespace HydraTorrent.Views
                     var container = lstCompleted.ItemContainerGenerator.ContainerFromItem(item) as ContentPresenter;
                     if (container == null) continue;
 
-                    var imgControl = FindVisualChild<Image>(container);
+                    // ✅ Ищем Image по имени
+                    var imgControl = FindVisualChild<Image>(container, "imgCompletedCover");
                     if (imgControl != null && imgControl.Source == null)
                     {
                         LoadQueueItemCover(imgControl, item.GameId.Value);
@@ -229,7 +230,7 @@ namespace HydraTorrent.Views
                     if (!i.GameId.HasValue) return false;
                     var c = lstCompleted.ItemContainerGenerator.ContainerFromItem(i) as ContentPresenter;
                     if (c == null) return true;
-                    var img = FindVisualChild<Image>(c);
+                    var img = FindVisualChild<Image>(c, "imgCompletedCover");
                     return img?.Source == null;
                 });
 
@@ -244,6 +245,9 @@ namespace HydraTorrent.Views
         // 4. COMPLETED - ОБРАБОТЧИКИ КНОПОК
         // ────────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Обработчик кнопки "Открыть папку" для завершённой загрузки
+        /// </summary>
         private void BtnOpenCompletedFolder_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is TorrentResult item)
@@ -251,12 +255,12 @@ namespace HydraTorrent.Views
                 var path = item.DownloadPath;
 
                 // Для репаков - открываем папку с setup.exe
-                if (!string.IsNullOrEmpty(item.ExecutablePath) && File.Exists(item.ExecutablePath))
+                if (!string.IsNullOrEmpty(item.ExecutablePath) && System.IO.File.Exists(item.ExecutablePath))
                 {
                     path = System.IO.Path.GetDirectoryName(item.ExecutablePath);
                 }
 
-                if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+                if (!string.IsNullOrEmpty(path) && System.IO.Directory.Exists(path))
                 {
                     Process.Start(new ProcessStartInfo
                     {
@@ -328,27 +332,111 @@ namespace HydraTorrent.Views
             }
         }
 
-        private void BtnRemoveCompleted_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Обработчик кнопки удаления одной игры из списка завершённых (крестик).
+        /// Удаляет торрент из qBittorrent, сохраняет файлы и статистику.
+        /// </summary>
+        private async void BtnRemoveCompleted_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is TorrentResult item && item.GameId.HasValue)
             {
-                _completedManager?.RemoveFromCompleted(item.GameId.Value);
+                // Показываем диалог подтверждения
+                var result = PlayniteApi.Dialogs.ShowMessage(
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConfirmRemoveCompleted"), item.Name),
+                    ResourceProvider.GetString("LOC_HydraTorrent_RemoveFromList"),
+                    MessageBoxButton.YesNo);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+
+                // Получаем хеш торрента
+                var hash = item.TorrentHash;
+
+                // Удаляем из CompletedManager с трекингом хеша
+                if (_completedManager != null)
+                {
+                    _completedManager.RemoveFromCompletedWithTracking(item.GameId.Value);
+                }
+
+                // Удаляем торрент из qBittorrent (файлы сохраняются)
+                if (!string.IsNullOrEmpty(hash))
+                {
+                    try
+                    {
+                        // Получаем монитор через рефлексию
+                        var monitorField = _plugin.GetType().GetField("_monitor",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                        if (monitorField != null)
+                        {
+                            var monitor = monitorField.GetValue(_plugin) as TorrentMonitor;
+                            if (monitor != null)
+                            {
+                                await monitor.RemoveTorrentFromClientAsync(hash);
+                                HydraTorrent.logger.Info($"Торрент удалён из клиента: {item.Name}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        HydraTorrent.logger.Error(ex, $"Ошибка удаления торрента из клиента: {item.Name}");
+                    }
+                }
+
+                // Обновляем UI
                 UpdateCompletedUI();
                 UpdateStatisticsUI();
             }
         }
 
-        private void BtnClearCompleted_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Обработчик кнопки "Очистить список" - удаляет все завершённые загрузки.
+        /// Удаляет все торренты из qBittorrent, сохраняет файлы и статистику.
+        /// </summary>
+        private async void BtnClearCompleted_Click(object sender, RoutedEventArgs e)
         {
-            if (PlayniteApi.Dialogs.ShowMessage(
-                ResourceProvider.GetString("LOC_HydraTorrent_CompletedConfirmClear"),
-                ResourceProvider.GetString("LOC_HydraTorrent_Attention"),
-                MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            // Показываем диалог подтверждения
+            var result = PlayniteApi.Dialogs.ShowMessage(
+                ResourceProvider.GetString("LOC_HydraTorrent_ConfirmClearCompleted"),
+                ResourceProvider.GetString("LOC_HydraTorrent_ClearCompletedList"),
+                MessageBoxButton.YesNo);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            if (_completedManager == null) return;
+
+            // Получаем все хеши для удаления
+            var hashes = _completedManager.ClearAllWithTracking();
+
+            // Удаляем все торренты из qBittorrent (файлы сохраняются)
+            if (hashes.Any())
             {
-                _completedManager?.ClearAll();
-                UpdateCompletedUI();
-                UpdateStatisticsUI();
+                try
+                {
+                    // Получаем монитор через рефлексию
+                    var monitorField = _plugin.GetType().GetField("_monitor",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    if (monitorField != null)
+                    {
+                        var monitor = monitorField.GetValue(_plugin) as TorrentMonitor;
+                        if (monitor != null)
+                        {
+                            int removed = await monitor.RemoveTorrentsFromClientAsync(hashes);
+                            HydraTorrent.logger.Info($"Удалено {removed} торрентов из клиента при очистке списка");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    HydraTorrent.logger.Error(ex, "Ошибка удаления торрентов при очистке списка");
+                }
             }
+
+            // Обновляем UI
+            UpdateCompletedUI();
+            UpdateStatisticsUI();
         }
 
         public void UpdateStatisticsUI()
@@ -1922,7 +2010,7 @@ namespace HydraTorrent.Views
             }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
-        private void UpdateQueueUI()
+        public void UpdateQueueUI()
         {
             if (lstQueue == null || txtQueueEmpty == null) return;
             var queue = _plugin.DownloadQueue;

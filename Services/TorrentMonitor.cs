@@ -28,6 +28,8 @@ namespace HydraTorrent.Services
 
         public static readonly ILogger logger = LogManager.GetLogger();
 
+        private StatisticsManager _statisticsManager;
+
         public TorrentMonitor(IPlayniteAPI api, HydraTorrent plugin)
         {
             _api = api;
@@ -40,6 +42,9 @@ namespace HydraTorrent.Services
             _client = new QBittorrentClient(url);
             _gameSetupService = new GameSetupService(_plugin);
             _completedManager = new CompletedManager(_plugin);
+
+            _statisticsManager = new StatisticsManager(plugin.GetPluginUserDataPath(), _completedManager);
+            _statisticsManager.Load();
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -241,13 +246,31 @@ namespace HydraTorrent.Services
 
                             // ✅ Добавляем в список завершённых
                             _completedManager.AddCompletedItem(item);
+                            _statisticsManager.RecalculateFromCompleted();
+                            _plugin.DownloadQueue.Remove(item);
+                            _plugin.SaveQueue();
+
+                            if (item.GameId.HasValue && HydraTorrent.LiveStatus.ContainsKey(item.GameId.Value))
+                            {
+                                HydraTorrent.LiveStatus.Remove(item.GameId.Value);
+                            }
+
+                            if (HydraHubView.CurrentInstance != null)
+                            {
+                                HydraHubView.CurrentInstance.Dispatcher.Invoke(() =>
+                                {
+                                    HydraHubView.CurrentInstance.UpdateCompletedUI();
+                                    HydraHubView.CurrentInstance.UpdateStatisticsUI();
+                                    HydraHubView.CurrentInstance.UpdateQueueUI();
+                                });
+                            }
                         }
 
                         // ✅ Проверяем настройки раздачи
                         if (!settings.KeepSeedingAfterDownload)
                         {
                             // Удаляем торрент из qBittorrent, файлы сохраняем
-                            await RemoveTorrentFromClient(item.TorrentHash);
+                            await RemoveTorrentFromClientAsync(item.TorrentHash);
                             item.IsRemovedFromClient = true;
                         }
 
@@ -316,7 +339,7 @@ namespace HydraTorrent.Services
                         HydraTorrent.logger.Info($"🔄 Достигнут ratio {currentRatio:F2} для: {item.Name}");
 
                         // Удаляем торрент из клиента
-                        await RemoveTorrentFromClient(item.TorrentHash);
+                        await RemoveTorrentFromClientAsync(item.TorrentHash);
                         item.IsRemovedFromClient = true;
 
                         _completedManager.UpdateItem(item);
@@ -339,18 +362,46 @@ namespace HydraTorrent.Services
         // Удаление торрента из клиента (файлы сохраняются)
         // ────────────────────────────────────────────────────────────────
 
-        private async Task RemoveTorrentFromClient(string hash)
+        /// <summary>
+        /// Удаляет торрент из qBittorrent, сохраняя скачанные файлы.
+        /// Публичный метод для вызова из UI.
+        /// </summary>
+        public async Task<bool> RemoveTorrentFromClientAsync(string hash)
         {
             try
             {
-                // DeleteTorrentAsync с deleteFiles = false — удаляет торрент, но НЕ файлы
+                if (string.IsNullOrEmpty(hash))
+                {
+                    logger.Warn("Попытка удаления торрента с пустым хешем");
+                    return false;
+                }
+
+                // DeleteAsync с deleteFiles = false — удаляет торрент, но НЕ файлы
                 await _client.DeleteAsync(hash, false);
                 HydraTorrent.logger.Info($"Торрент удалён из qBittorrent: {hash}");
+                return true;
             }
             catch (Exception ex)
             {
                 HydraTorrent.logger.Error(ex, $"Ошибка удаления торрента: {hash}");
+                return false;
             }
+        }
+
+        /// <summary>
+        /// Удаляет несколько торрентов из qBittorrent, сохраняя файлы.
+        /// </summary>
+        public async Task<int> RemoveTorrentsFromClientAsync(IEnumerable<string> hashes)
+        {
+            int removed = 0;
+            foreach (var hash in hashes)
+            {
+                if (await RemoveTorrentFromClientAsync(hash))
+                {
+                    removed++;
+                }
+            }
+            return removed;
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -409,6 +460,26 @@ namespace HydraTorrent.Services
 
         private void UpdateGameProgress(Game game, TorrentInfo torrent)
         {
+            // ✅ ПРОВЕРКА 1: Был ли торрент удалён пользователем
+            if (!string.IsNullOrEmpty(torrent.Hash) && _completedManager.IsTorrentRemoved(torrent.Hash))
+            {
+                HydraTorrent.logger.Debug($"Пропуск: торрент был удалён пользователем: {torrent.Hash}");
+                return;
+            }
+
+            // ✅ ПРОВЕРКА 2: Проверяем в CompletedManager (более надёжно)
+            if (_completedManager.GetByGameId(game.Id) != null)
+            {
+                return;  // Пропускаем завершённые
+            }
+
+            // ✅ ПРОВЕРКА 3: Дополнительно проверяем очередь
+            var queueItem = _plugin.DownloadQueue.FirstOrDefault(q => q.GameId == game.Id);
+            if (queueItem != null && queueItem.QueueStatus == "Completed")
+            {
+                return;
+            }
+
             var progressPercent = torrent.Progress;
             string dynamicName;
 

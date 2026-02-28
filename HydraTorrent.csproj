@@ -112,6 +112,7 @@
     </Compile>
     <Compile Include="Services\CompletedManager.cs" />
     <Compile Include="Services\GameSetupService.cs" />
+    <Compile Include="Services\RemovedHashesManager.cs" />
     <Compile Include="Services\StatisticsManager.cs" />
     <Compile Include="Services\TorrentMonitor.cs" />
     <Compile Include="Views\ExecutableSelectionWindow.xaml.cs">

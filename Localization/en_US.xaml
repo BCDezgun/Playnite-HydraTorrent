@@ -23,6 +23,8 @@
     <sys:String x:Key="LOC_HydraTorrent_ResultsFound">Found: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Sources">Sources</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_AllSources">All sources</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SearchFilters">Search Filters</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MoreFilters">More filters coming soon...</sys:String>
 
     <!-- Pagination -->
     <sys:String x:Key="LOC_HydraTorrent_PageInfo">Page {1} of {2} ({0} results)</sys:String>
@@ -61,6 +63,9 @@
     <sys:String x:Key="LOC_HydraTorrent_Remaining">Remaining:</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoETA">—</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_PercentFormat">{0:F1}% ({1:F2} / {2:F2} GB)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_MaxSpeed">Max speed</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Seeds">Seeds</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Peers">Peers</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          QUEUE
@@ -127,8 +132,13 @@
     <sys:String x:Key="LOC_HydraTorrent_Resume">Resume</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Cancel">Cancel</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Delete">Delete</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteTorrent">Remove torrent '{0}' from qBittorrent? Files will be preserved.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteTorrent">Delete torrent '{0}' from qBittorrent and all downloaded files?</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteGame">Remove game from library? Files will remain on disk.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentAndFiles">Delete torrent and files</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SettingsMenu">Actions menu</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteTorrentTitle">Delete Torrent</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeleteFromLibraryTitle">Remove from Library</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmDeleteLibrary">Do you want to remove the game from your Playnite library?</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          NOTIFICATIONS
@@ -245,5 +255,11 @@
     <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherLarge">Large launcher</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherProductName">Launcher: ProductName matches</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherPublisher">Launcher: known publisher</sys:String>
+
+    <!-- Remove from completed list -->
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromList">Remove from List</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmRemoveCompleted">Remove &quot;{0}&quot; from completed list?&#x0a;Torrent will be removed from qBittorrent, but downloaded files will be preserved.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ClearCompletedList">Clear Completed List</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmClearCompleted">Clear all completed downloads?&#x0a;All torrents will be removed from qBittorrent, but downloaded files will be preserved.</sys:String>
 
 </ResourceDictionary>

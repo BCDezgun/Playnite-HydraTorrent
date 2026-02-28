@@ -17,6 +17,8 @@ namespace HydraTorrent.Services
         private const string CompletedFileName = "completed.json";
 
         private List<TorrentResult> _completedItems;
+        private RemovedHashesManager _removedHashesManager;
+
         public List<TorrentResult> CompletedItems
         {
             get => _completedItems;
@@ -29,6 +31,7 @@ namespace HydraTorrent.Services
         {
             _plugin = plugin;
             _completedItems = new List<TorrentResult>();
+            _removedHashesManager = new RemovedHashesManager(plugin);
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -49,20 +52,24 @@ namespace HydraTorrent.Services
             {
                 _completedItems = new List<TorrentResult>();
                 logger.Info("Список завершённых: файл не найден, создаём новый");
-                return;
+            }
+            else
+            {
+                try
+                {
+                    var json = File.ReadAllText(filePath);
+                    _completedItems = JsonConvert.DeserializeObject<List<TorrentResult>>(json) ?? new List<TorrentResult>();
+                    logger.Info($"Загружено {_completedItems.Count} завершённых элементов");
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, "Ошибка загрузки списка завершённых");
+                    _completedItems = new List<TorrentResult>();
+                }
             }
 
-            try
-            {
-                var json = File.ReadAllText(filePath);
-                _completedItems = JsonConvert.DeserializeObject<List<TorrentResult>>(json) ?? new List<TorrentResult>();
-                logger.Info($"Загружено {_completedItems.Count} завершённых элементов");
-            }
-            catch (Exception ex)
-            {
-                logger.Error(ex, "Ошибка загрузки списка завершённых");
-                _completedItems = new List<TorrentResult>();
-            }
+            // Загружаем список удалённых хешей
+            _removedHashesManager.Load();
         }
 
         public void SaveCompletedItems()
@@ -78,6 +85,23 @@ namespace HydraTorrent.Services
             {
                 logger.Error(ex, "Ошибка сохранения списка завершённых");
             }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Доступ к RemovedHashesManager
+        // ────────────────────────────────────────────────────────────────
+
+        public RemovedHashesManager GetRemovedHashesManager()
+        {
+            return _removedHashesManager;
+        }
+
+        /// <summary>
+        /// Проверяет, был ли торрент удалён пользователем
+        /// </summary>
+        public bool IsTorrentRemoved(string hash)
+        {
+            return _removedHashesManager.IsRemoved(hash);
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -154,7 +178,8 @@ namespace HydraTorrent.Services
         }
 
         /// <summary>
-        /// Удаляет элемент из списка завершённых
+        /// Удаляет элемент из списка завершённых (без удаления торрента из клиента)
+        /// Используется для внутреннего удаления
         /// </summary>
         public void RemoveFromCompleted(Guid gameId)
         {
@@ -168,7 +193,61 @@ namespace HydraTorrent.Services
         }
 
         /// <summary>
-        /// Очищает весь список завершённых
+        /// Удаляет элемент из списка завершённых с удалением торрента из qBittorrent.
+        /// Добавляет хеш в список удалённых для предотвращения повторного появления.
+        /// Возвращает хеш удалённого торрента (для удаления из клиента).
+        /// </summary>
+        public string RemoveFromCompletedWithTracking(Guid gameId)
+        {
+            var item = _completedItems.FirstOrDefault(c => c.GameId == gameId);
+            if (item == null) return null;
+
+            var hash = item.TorrentHash;
+
+            // Добавляем хеш в список удалённых
+            if (!string.IsNullOrEmpty(hash))
+            {
+                _removedHashesManager.AddRemovedHash(hash);
+            }
+
+            // Удаляем из списка
+            _completedItems.Remove(item);
+            SaveCompletedItems();
+
+            logger.Info($"Удалено из завершённых с трекингом: {item.Name}, hash: {hash}");
+
+            return hash;
+        }
+
+        /// <summary>
+        /// Очищает весь список завершённых с добавлением всех хешей в список удалённых.
+        /// Возвращает список хешей для удаления из клиента.
+        /// </summary>
+        public List<string> ClearAllWithTracking()
+        {
+            // Собираем все хеши
+            var hashes = _completedItems
+                .Where(c => !string.IsNullOrEmpty(c.TorrentHash))
+                .Select(c => c.TorrentHash)
+                .ToList();
+
+            // Добавляем все хеши в список удалённых
+            if (hashes.Any())
+            {
+                _removedHashesManager.AddRemovedHashes(hashes);
+            }
+
+            // Очищаем список
+            _completedItems.Clear();
+            SaveCompletedItems();
+
+            logger.Info($"Список завершённых очищен, {hashes.Count} хешей добавлено в удалённые");
+
+            return hashes;
+        }
+
+        /// <summary>
+        /// Очищает весь список завершённых (без трекинга - использовать только для внутренних нужд)
         /// </summary>
         public void ClearAll()
         {
