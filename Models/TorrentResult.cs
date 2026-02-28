@@ -48,6 +48,45 @@ namespace HydraTorrent.Models
         /// </summary>
         public string ExecutablePath { get; set; }
 
+        // ────────────────────────────────────────────────────────────────
+        // Новые свойства для раздела "Завершённые" и статистики
+        // ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Дата и время завершения загрузки
+        /// </summary>
+        public DateTime? CompletedAt { get; set; }
+
+        /// <summary>
+        /// Общий размер загруженных данных в байтах
+        /// </summary>
+        public long TotalDownloadedBytes { get; set; }
+
+        /// <summary>
+        /// Общий размер отданных данных в байтах (для раздачи)
+        /// </summary>
+        public long TotalUploadedBytes { get; set; }
+
+        /// <summary>
+        /// Текущий ratio (соотношение upload/download)
+        /// </summary>
+        public double SeedRatio { get; set; }
+
+        /// <summary>
+        /// Удалён ли торрент из qBittorrent (файлы сохранены)
+        /// </summary>
+        public bool IsRemovedFromClient { get; set; } = false;
+
+        /// <summary>
+        /// Средняя скорость загрузки в байтах/сек
+        /// </summary>
+        public long AverageDownloadSpeed { get; set; }
+
+        /// <summary>
+        /// Время загрузки (длительность)
+        /// </summary>
+        public TimeSpan? DownloadDuration { get; set; }
+
         // Конструктор по умолчанию для JSON сериализации
         public TorrentResult()
         {
@@ -56,6 +95,11 @@ namespace HydraTorrent.Models
             SizeBytes = 0;
             DetectedType = GameType.Unknown;
             IsConfigured = false;
+            IsRemovedFromClient = false;
+            SeedRatio = 0;
+            TotalDownloadedBytes = 0;
+            TotalUploadedBytes = 0;
+            AverageDownloadSpeed = 0;
         }
     }
 }

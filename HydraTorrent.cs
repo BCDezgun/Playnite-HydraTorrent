@@ -34,7 +34,13 @@ namespace HydraTorrent
         private const string TorrentDataFolder = "HydraTorrents";
         private TorrentMonitor _monitor;
 
+        private CompletedManager _completedManager;
+        private StatisticsManager _statisticsManager;
+
         public static Dictionary<Guid, TorrentStatusInfo> LiveStatus = new Dictionary<Guid, TorrentStatusInfo>();
+
+        public CompletedManager GetCompletedManager() => _completedManager;
+        public StatisticsManager GetStatisticsManager() => _statisticsManager;
 
         // ────────────────────────────────────────────────────────────────
         // Очередь загрузок
@@ -633,6 +639,12 @@ namespace HydraTorrent
         {
             _monitor.Start();
             LoadQueue(); // ✅ Загружаем очередь при старте
+
+            _completedManager = new CompletedManager(this);
+            _completedManager.LoadCompletedItems();
+
+            _statisticsManager = new StatisticsManager(GetPluginUserDataPath(), _completedManager);
+            _statisticsManager.Load();
 
             // ✅ Восстанавливаем состояния после перезапуска
             _ = RestoreQueueStateAsync();

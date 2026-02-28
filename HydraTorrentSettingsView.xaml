@@ -8,62 +8,125 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="15">
 
-            <TextBlock Text="{DynamicResource LOC_HydraTorrent_QBittorrentSettings}" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+            <!-- ═══════════════════════════════════════════════════════════
+                 qBittorrent Settings
+                 ═══════════════════════════════════════════════════════════ -->
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_QBittorrentSettings}" 
+                       FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+
             <CheckBox x:Name="chkUseQb" Content="{DynamicResource LOC_HydraTorrent_UseQbittorrent}"
                       IsChecked="{Binding Settings.UseQbittorrent}" Margin="0,0,0,15"/>
+
             <Grid Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{DynamicResource LOC_HydraTorrent_Host}" VerticalAlignment="Center" Width="120"/>
-                <TextBox Grid.Column="1" Text="{Binding Settings.QBittorrentHost}" />
+                <TextBox Grid.Column="1" Text="{Binding Settings.QBittorrentHost}"/>
             </Grid>
+
             <Grid Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="100"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{DynamicResource LOC_HydraTorrent_Port}" VerticalAlignment="Center" Width="120"/>
-                <TextBox Grid.Column="1" Text="{Binding Settings.QBittorrentPort}" />
+                <TextBox Grid.Column="1" Text="{Binding Settings.QBittorrentPort}"/>
             </Grid>
+
             <Grid Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{DynamicResource LOC_HydraTorrent_Username}" VerticalAlignment="Center" Width="120"/>
-                <TextBox Grid.Column="1" Text="{Binding Settings.QBittorrentUsername}" />
+                <TextBox Grid.Column="1" Text="{Binding Settings.QBittorrentUsername}"/>
             </Grid>
+
             <Grid Margin="0,0,0,20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{DynamicResource LOC_HydraTorrent_Password}" VerticalAlignment="Center" Width="120"/>
-                <PasswordBox Grid.Column="1" x:Name="txtPassword" PasswordChanged="txtPassword_PasswordChanged" />
+                <PasswordBox Grid.Column="1" x:Name="txtPassword" PasswordChanged="txtPassword_PasswordChanged"/>
             </Grid>
-            <Separator Margin="0,10"/>
-            <TextBlock Text="{DynamicResource LOC_HydraTorrent_DownloadPaths}" FontWeight="Bold" FontSize="16" Margin="0,10,0,10"/>
+
+            <Button Content="{DynamicResource LOC_HydraTorrent_TestConnection}"
+                    Click="TestConnection_Click"
+                    HorizontalAlignment="Left"
+                    Padding="20,8"/>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 Download Path Settings
+                 ═══════════════════════════════════════════════════════════ -->
+            <Separator Margin="0,20,0,10"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_DownloadPaths}" 
+                       FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+
             <CheckBox Content="{DynamicResource LOC_HydraTorrent_UseDefaultPath}"
                       IsChecked="{Binding Settings.UseDefaultDownloadPath}" Margin="0,0,0,10"/>
+
             <Grid Margin="0,0,0,20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{DynamicResource LOC_HydraTorrent_DownloadPaths}" VerticalAlignment="Center" Width="120"/>
-                <TextBox Grid.Column="1" Text="{Binding Settings.DefaultDownloadPath}" x:Name="DefaultPathText" />
-                <Button Grid.Column="2" Content="{DynamicResource LOC_HydraTorrent_Browse}" Click="BrowseDefaultPath_Click" Margin="5,0,0,0" Padding="10,2"/>
+                <TextBlock Text="{DynamicResource LOC_HydraTorrent_DownloadPathSettings}" VerticalAlignment="Center" Width="120"/>
+                <TextBox Grid.Column="1" Text="{Binding Settings.DefaultDownloadPath}" x:Name="DefaultPathText"/>
+                <Button Grid.Column="2" Content="{DynamicResource LOC_HydraTorrent_Browse}" 
+                        Click="BrowseDefaultPath_Click" Margin="5,0,0,0" Padding="10,2"/>
             </Grid>
-            <Button Content="{DynamicResource LOC_HydraTorrent_TestConnection}"
-                    Click="TestConnection_Click"
-                    HorizontalAlignment="Left"
-                    Padding="20,8"/>
 
-            <!-- ==================== НОВЫЙ РАЗДЕЛ: ИСТОЧНИКИ ==================== -->
-            <Separator Margin="0,25,0,15"/>
+            <!-- ═══════════════════════════════════════════════════════════
+                 Seeding Settings (NEW)
+                 ═══════════════════════════════════════════════════════════ -->
+            <Separator Margin="0,10,0,10"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_SeadingSettings}"
+                       FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+
+            <CheckBox Content="{DynamicResource LOC_HydraTorrent_KeepSeeding}"
+                      IsChecked="{Binding Settings.KeepSeedingAfterDownload}"
+                      x:Name="ChkKeepSeeding"
+                      Margin="0,0,0,5"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_KeepSeedingDesc}"
+                       FontSize="11" Foreground="#888" Margin="20,0,0,10" 
+                       TextWrapping="Wrap"/>
+
+            <StackPanel Margin="20,0,0,15">
+                <CheckBox Content="{DynamicResource LOC_HydraTorrent_AutoRemoveRatio}"
+                          IsChecked="{Binding Settings.AutoRemoveAfterSeedRatio}"
+                          x:Name="ChkAutoRemove"
+                          Margin="0,0,0,5"/>
+
+                <TextBlock Text="{DynamicResource LOC_HydraTorrent_AutoRemoveRatioDesc}"
+                           FontSize="11" Foreground="#888" Margin="20,0,0,10"
+                           TextWrapping="Wrap"/>
+
+                <StackPanel Orientation="Horizontal" Margin="20,0,0,10">
+                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_RatioThreshold}" 
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <ComboBox x:Name="CmbRatioThreshold" 
+                              Width="80"
+                              SelectedIndex="{Binding Settings.SeedRatioThresholdIndex}">
+                        <ComboBoxItem Content="0.5"/>
+                        <ComboBoxItem Content="1.0"/>
+                        <ComboBoxItem Content="1.5"/>
+                        <ComboBoxItem Content="2.0"/>
+                        <ComboBoxItem Content="3.0"/>
+                    </ComboBox>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 Sources (ORIGINAL STYLE)
+                 ═══════════════════════════════════════════════════════════ -->
+            <Separator Margin="0,15,0,15"/>
 
             <TextBlock Text="{DynamicResource LOC_HydraTorrent_RepackSources}" 
                        FontWeight="Bold" 
@@ -77,7 +140,7 @@
                     Margin="0,0,0,15"/>
 
             <!-- Динамический список источников -->
-            <StackPanel x:Name="SourcesPanel" />
+            <StackPanel x:Name="SourcesPanel"/>
 
             <TextBlock Text="{DynamicResource LOC_HydraTorrent_SourceHint}"
                        Margin="0,15,0,0" 

@@ -1,7 +1,65 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
-    
+
+    <!-- Вкладки -->
+    <sys:String x:Key="LOC_HydraTorrent_TabCompleted">Завершённые</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TabStatistics">Статистика</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TabQueue">Очередь</sys:String>
+
+    <!-- Раздел Completed -->
+    <sys:String x:Key="LOC_HydraTorrent_CompletedTitle">Завершённые загрузки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_CompletedEmpty">Нет завершённых загрузок</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_CompletedClearAll">Очистить список</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_CompletedConfirmClear">Вы уверены, что хотите очистить список завершённых загрузок?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_CompletedRemove">Удалить из списка</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_CompletedOpenFolder">Открыть папку</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_CompletedConfigure">Настроить игру</sys:String>
+
+    <!-- Статусы в Completed -->
+    <sys:String x:Key="LOC_HydraTorrent_StatusConfigured">Настроено</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusPendingSetup">Требует настройки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusSeeding">На раздаче</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatusRemovedFromClient">Удалено из клиента</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TypePortable">Портативная</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TypeRepack">Репак</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TypeUnknown">Неизвестно</sys:String>
+
+    <!-- Статистика -->
+    <sys:String x:Key="LOC_HydraTorrent_StatsTitle">Статистика загрузок</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsTotalDownloads">Всего загрузок</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsTotalSize">Общий размер</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsTotalTime">Общее время</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsAvgSpeed">Средняя скорость</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsPortables">Портативных</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsRepacks">Репаков</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsTopGames">Топ по размеру</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsReset">Сбросить статистику</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsConfirmReset">Вы уверены, что хотите сбросить статистику?</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsGames">игр</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_StatsNoData">Нет данных</sys:String>
+
+    <!-- Настройки раздачи -->
+    <sys:String x:Key="LOC_HydraTorrent_SeadingSettings">Настройки раздачи</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_KeepSeeding">Оставаться на раздаче после загрузки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_KeepSeedingDesc">Если выключено, торренты будут удаляться из qBittorrent сразу после завершения загрузки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AutoRemoveRatio">Автоудаление при достижении ratio</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AutoRemoveRatioDesc">Автоматически удалить торрент из qBittorrent при достижении указанного ratio (файлы сохраняются)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RatioThreshold">Порог ratio</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RatioFormat">{0:F1}</sys:String>
+
+    <!-- Уведомления -->
+    <sys:String x:Key="LOC_HydraTorrent_TorrentRemovedRatio">Торрент удалён из клиента: {0} (ratio: {1})</sys:String>
+
+    <!-- Колонки -->
+    <sys:String x:Key="LOC_HydraTorrent_ColumnGame">Игра</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnType">Тип</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnStatus">Статус</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnSize">Размер</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnDate">Дата</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnRatio">Ratio</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnDuration">Время</sys:String>
+
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- ВКЛАДИ И НАВИГАЦИЯ -->
     <!-- ════════════════════════════════════════════════════════════ -->
@@ -12,10 +70,9 @@
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- ЗАГОЛОВКИ КОЛОНОК -->
     <!-- ════════════════════════════════════════════════════════════ -->
-    <sys:String x:Key="LOC_HydraTorrent_ColumnName">Название</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_ColumnSize">Размер</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ColumnName">Название</sys:String>    
     <sys:String x:Key="LOC_HydraTorrent_ColumnSource">Источник</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_ColumnDate">Дата</sys:String>
+    
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- ПОИСК -->

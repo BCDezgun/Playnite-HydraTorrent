@@ -13,6 +13,18 @@ namespace HydraTorrent
         public string Url { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Пороги ratio для автоудаления торрента
+    /// </summary>
+    public enum SeedRatioThreshold
+    {
+        Ratio_0_5 = 0,   // 0.5
+        Ratio_1_0 = 1,   // 1.0
+        Ratio_1_5 = 2,   // 1.5
+        Ratio_2_0 = 3,   // 2.0
+        Ratio_3_0 = 4    // 3.0
+    }
+
     public class HydraTorrentSettings : ObservableObject
     {
         // ────────────────────────────────────────────────────────────────
@@ -44,6 +56,75 @@ namespace HydraTorrent
         // ────────────────────────────────────────────────────────────────
         public List<SourceEntry> Sources { get; set; } = new List<SourceEntry>();
         public List<string> SearchHistory { get; set; } = new List<string>();
+
+        // ────────────────────────────────────────────────────────────────
+        // Настройки раздачи (Seeding)
+        // ────────────────────────────────────────────────────────────────
+
+        private bool keepSeedingAfterDownload = true;
+        private int seedRatioThresholdIndex = (int)SeedRatioThreshold.Ratio_1_0;
+        private bool autoRemoveAfterSeedRatio = true;
+
+        /// <summary>
+        /// Оставаться на раздаче после завершения загрузки.
+        /// Если false - торрент сразу удаляется из qBittorrent (файлы сохраняются).
+        /// </summary>
+        public bool KeepSeedingAfterDownload
+        {
+            get => keepSeedingAfterDownload;
+            set
+            {
+                SetValue(ref keepSeedingAfterDownload, value);
+                // Если отключаем раздачу, то и автоудаление недоступно
+                if (!value)
+                {
+                    autoRemoveAfterSeedRatio = false;
+                    OnPropertyChanged(nameof(AutoRemoveAfterSeedRatio));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Индекс выбранного порога ratio (см. SeedRatioThreshold enum)
+        /// </summary>
+        public int SeedRatioThresholdIndex
+        {
+            get => seedRatioThresholdIndex;
+            set => SetValue(ref seedRatioThresholdIndex, value);
+        }
+
+        /// <summary>
+        /// Автоматически удалять торрент из qBittorrent при достижении порога ratio.
+        /// Файлы игры при этом сохраняются.
+        /// </summary>
+        public bool AutoRemoveAfterSeedRatio
+        {
+            get => autoRemoveAfterSeedRatio;
+            set
+            {
+                // Можно включить только если включена раздача
+                if (keepSeedingAfterDownload)
+                {
+                    SetValue(ref autoRemoveAfterSeedRatio, value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Возвращает числовое значение порога ratio
+        /// </summary>
+        public double GetSeedRatioValue()
+        {
+            return SeedRatioThresholdIndex switch
+            {
+                0 => 0.5,
+                1 => 1.0,
+                2 => 1.5,
+                3 => 2.0,
+                4 => 3.0,
+                _ => 1.0
+            };
+        }
     }
 
     public class HydraTorrentSettingsViewModel : ObservableObject, ISettings

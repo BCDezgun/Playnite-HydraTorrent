@@ -1,4 +1,6 @@
-﻿using HydraTorrent.Views;
+﻿using HydraTorrent.Models;
+using HydraTorrent.Services;
+using HydraTorrent.Views;
 using Newtonsoft.Json.Linq;
 using Playnite.SDK;
 using Playnite.SDK.Models;
@@ -8,7 +10,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
-using HydraTorrent.Services;
 
 namespace HydraTorrent.Services
 {
@@ -20,6 +21,11 @@ namespace HydraTorrent.Services
         private readonly QBittorrentClient _client;
         private bool _isRunning;
         private GameSetupService _gameSetupService;
+        private CompletedManager _completedManager;
+
+        // Для отслеживания времени загрузки
+        private Dictionary<Guid, DateTime> _downloadStartTimes = new Dictionary<Guid, DateTime>();
+
         public static readonly ILogger logger = LogManager.GetLogger();
 
         public TorrentMonitor(IPlayniteAPI api, HydraTorrent plugin)
@@ -33,6 +39,7 @@ namespace HydraTorrent.Services
             var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
             _client = new QBittorrentClient(url);
             _gameSetupService = new GameSetupService(_plugin);
+            _completedManager = new CompletedManager(_plugin);
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -49,6 +56,10 @@ namespace HydraTorrent.Services
                 {
                     var qb = _plugin.GetSettings().Settings;
                     await _client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+
+                    // Загружаем список завершённых
+                    _completedManager.LoadCompletedItems();
+
                     _timer.Start();
                     _isRunning = true;
                     HydraTorrent.logger.Info("Hydra Monitor: qBittorrent connected.");
@@ -104,6 +115,9 @@ namespace HydraTorrent.Services
 
                 // ✅ Проверка завершённых
                 await CheckCompletedDownloadsAsync();
+
+                // ✅ Проверка ratio для автоудаления
+                await CheckSeedRatioAsync();
             }
             catch (Exception ex)
             {
@@ -146,6 +160,12 @@ namespace HydraTorrent.Services
                         if (torrent.State.ToString().Contains("Paused"))
                         {
                             await _client.ResumeAsync(item.TorrentHash);
+
+                            // Фиксируем время начала если ещё не зафиксировано
+                            if (item.GameId.HasValue && !_downloadStartTimes.ContainsKey(item.GameId.Value))
+                            {
+                                _downloadStartTimes[item.GameId.Value] = DateTime.Now;
+                            }
                         }
                     }
                     else if (item.QueueStatus == "Queued" || item.QueueStatus == "Paused")
@@ -169,74 +189,45 @@ namespace HydraTorrent.Services
         {
             try
             {
-                // ✅ DEBUG: Лог в самом начале
-                HydraTorrent.logger.Info("[DEBUG] CheckCompletedDownloadsAsync: ЗАПУСК");
-
                 var queue = _plugin.DownloadQueue;
 
-                if (queue == null)
-                {
-                    HydraTorrent.logger.Warn("[DEBUG] Очередь = NULL!");
+                if (queue == null || !queue.Any())
                     return;
-                }
-
-                HydraTorrent.logger.Info($"[DEBUG] Очередь имеет {queue.Count} элементов");
 
                 var activeItems = queue.Where(q => q.QueueStatus == "Downloading").ToList();
-                HydraTorrent.logger.Info($"[DEBUG] Активных (Downloading): {activeItems.Count}");
-
-                foreach (var item in activeItems)
-                {
-                    HydraTorrent.logger.Info($"[DEBUG] Активный элемент: {item.Name}");
-                    HydraTorrent.logger.Info($"[DEBUG]   - TorrentHash: {item.TorrentHash ?? "NULL"}");
-                    HydraTorrent.logger.Info($"[DEBUG]   - DownloadPath: {item.DownloadPath ?? "NULL"}");
-                    HydraTorrent.logger.Info($"[DEBUG]   - QueueStatus: {item.QueueStatus}");
-                }
 
                 var allTorrents = await _client.GetTorrentListAsync();
-                HydraTorrent.logger.Info($"[DEBUG] Получено торрентов от qBittorrent: {allTorrents.Count()}");
+
+                var settings = _plugin.GetSettings().Settings;
 
                 foreach (var item in activeItems)
                 {
                     if (string.IsNullOrEmpty(item.TorrentHash))
-                    {
-                        HydraTorrent.logger.Warn($"[DEBUG] Пустой TorrentHash для: {item.Name}");
                         continue;
-                    }
 
                     var torrent = allTorrents.FirstOrDefault(t =>
                         t.Hash.Equals(item.TorrentHash, StringComparison.OrdinalIgnoreCase));
 
                     if (torrent == null)
-                    {
-                        HydraTorrent.logger.Warn($"[DEBUG] Торрент НЕ НАЙДЕН в qBittorrent: {item.TorrentHash}");
                         continue;
-                    }
-
-                    HydraTorrent.logger.Info($"[DEBUG] Торрент найден: {item.Name}");
-                    HydraTorrent.logger.Info($"[DEBUG]   - Progress: {torrent.Progress}");
-                    HydraTorrent.logger.Info($"[DEBUG]   - State: {torrent.State}");
 
                     if (torrent.Progress >= 1.0)
                     {
                         HydraTorrent.logger.Info($"✅ Загрузка завершена: {item.Name}");
 
+                        // ✅ Сохраняем статистику загрузки
+                        SaveDownloadStatistics(item, torrent);
+
+                        // ✅ Обновляем статус
                         item.QueueStatus = "Completed";
-                        _plugin.SaveQueue();
 
                         if (item.GameId.HasValue)
                         {
-                            // ❌ НЕ обновляем IsInstalled/IsInstalling здесь!
-                            // GameSetupService сам установит правильные значения в зависимости от типа игры:
-                            // - Portable: IsInstalled=true, IsInstalling=false, создаёт Play Action
-                            // - Repack: IsInstalled=false, IsInstalling=true, создаёт Install Action
-
                             // ✅ Запуск пост-обработки
                             if (!string.IsNullOrEmpty(item.DownloadPath))
                             {
                                 try
                                 {
-                                    HydraTorrent.logger.Info($"[DEBUG] Запуск пост-обработки: {item.DownloadPath}");
                                     await _gameSetupService.ProcessDownloadedGameAsync(
                                         item.GameId.Value,
                                         item.DownloadPath,
@@ -247,11 +238,20 @@ namespace HydraTorrent.Services
                                     HydraTorrent.logger.Error(ex, $"Ошибка пост-обработки: {item.Name}");
                                 }
                             }
-                            else
-                            {
-                                HydraTorrent.logger.Warn($"⚠️ Путь загрузки не сохранён для: {item.Name}");
-                            }
+
+                            // ✅ Добавляем в список завершённых
+                            _completedManager.AddCompletedItem(item);
                         }
+
+                        // ✅ Проверяем настройки раздачи
+                        if (!settings.KeepSeedingAfterDownload)
+                        {
+                            // Удаляем торрент из qBittorrent, файлы сохраняем
+                            await RemoveTorrentFromClient(item.TorrentHash);
+                            item.IsRemovedFromClient = true;
+                        }
+
+                        _plugin.SaveQueue();
 
                         _api.Notifications.Add(new NotificationMessage(
                             "HydraTorrent",
@@ -261,16 +261,146 @@ namespace HydraTorrent.Services
                         // Запускаем следующую
                         await _plugin.StartNextInQueueAsync();
                     }
-                    else
-                    {
-                        HydraTorrent.logger.Info($"[DEBUG] Торрент ещё не завершён: Progress={torrent.Progress}, State={torrent.State}");
-                    }
                 }
             }
             catch (Exception ex)
             {
                 HydraTorrent.logger.Error(ex, "Ошибка проверки завершённых загрузок");
             }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Проверка ratio для автоудаления
+        // ────────────────────────────────────────────────────────────────
+
+        private async Task CheckSeedRatioAsync()
+        {
+            try
+            {
+                var settings = _plugin.GetSettings().Settings;
+
+                // Если автоудаление выключено или раздача выключена — не проверяем
+                if (!settings.KeepSeedingAfterDownload || !settings.AutoRemoveAfterSeedRatio)
+                    return;
+
+                var completedItems = _completedManager.CompletedItems
+                    .Where(c => !c.IsRemovedFromClient && !string.IsNullOrEmpty(c.TorrentHash))
+                    .ToList();
+
+                if (!completedItems.Any())
+                    return;
+
+                var allTorrents = await _client.GetTorrentListAsync();
+                var ratioThreshold = settings.GetSeedRatioValue();
+
+                foreach (var item in completedItems)
+                {
+                    var torrent = allTorrents.FirstOrDefault(t =>
+                        t.Hash.Equals(item.TorrentHash, StringComparison.OrdinalIgnoreCase));
+
+                    if (torrent == null)
+                    {
+                        // Торрент уже не в клиенте — помечаем
+                        item.IsRemovedFromClient = true;
+                        continue;
+                    }
+
+                    // Вычисляем текущий ratio
+                    var currentRatio = torrent.Ratio;
+                    item.SeedRatio = currentRatio;
+                    item.TotalUploadedBytes = torrent.Uploaded ?? 0;
+
+                    // Проверяем порог
+                    if (currentRatio >= ratioThreshold)
+                    {
+                        HydraTorrent.logger.Info($"🔄 Достигнут ratio {currentRatio:F2} для: {item.Name}");
+
+                        // Удаляем торрент из клиента
+                        await RemoveTorrentFromClient(item.TorrentHash);
+                        item.IsRemovedFromClient = true;
+
+                        _completedManager.UpdateItem(item);
+
+                        _api.Notifications.Add(new NotificationMessage(
+                            "HydraTorrent",
+                            string.Format(ResourceProvider.GetString("LOC_HydraTorrent_TorrentRemovedRatio"),
+                                item.Name, currentRatio.ToString("F2")),
+                            NotificationType.Info));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Error(ex, "Ошибка проверки seed ratio");
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Удаление торрента из клиента (файлы сохраняются)
+        // ────────────────────────────────────────────────────────────────
+
+        private async Task RemoveTorrentFromClient(string hash)
+        {
+            try
+            {
+                // DeleteTorrentAsync с deleteFiles = false — удаляет торрент, но НЕ файлы
+                await _client.DeleteAsync(hash, false);
+                HydraTorrent.logger.Info($"Торрент удалён из qBittorrent: {hash}");
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Error(ex, $"Ошибка удаления торрента: {hash}");
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Сохранение статистики загрузки
+        // ────────────────────────────────────────────────────────────────
+
+        private void SaveDownloadStatistics(TorrentResult item, TorrentInfo torrent)
+        {
+            try
+            {
+                item.TotalDownloadedBytes = torrent.Downloaded ?? torrent.TotalSize ?? 0;
+                item.TotalUploadedBytes = torrent.Uploaded ?? 0;
+                item.SeedRatio = torrent.Ratio;
+
+                // Вычисляем длительность загрузки
+                if (item.GameId.HasValue && _downloadStartTimes.ContainsKey(item.GameId.Value))
+                {
+                    var startTime = _downloadStartTimes[item.GameId.Value];
+                    item.DownloadDuration = DateTime.Now - startTime;
+                    _downloadStartTimes.Remove(item.GameId.Value);
+
+                    // Вычисляем среднюю скорость
+                    if (item.DownloadDuration.HasValue && item.DownloadDuration.Value.TotalSeconds > 0)
+                    {
+                        item.AverageDownloadSpeed = (long)(item.TotalDownloadedBytes / item.DownloadDuration.Value.TotalSeconds);
+                    }
+                }
+
+                HydraTorrent.logger.Info($"Статистика сохранена для {item.Name}: " +
+                    $"Downloaded={FormatBytes(item.TotalDownloadedBytes)}, " +
+                    $"Uploaded={FormatBytes(item.TotalUploadedBytes)}, " +
+                    $"Ratio={item.SeedRatio:F2}");
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Error(ex, "Ошибка сохранения статистики");
+            }
+        }
+
+        private string FormatBytes(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            int order = 0;
+            double size = bytes;
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size /= 1024;
+            }
+            return $"{size:0.##} {sizes[order]}";
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -309,12 +439,6 @@ namespace HydraTorrent.Services
                 Peers = torrent.TotalLeechers
             };
 
-            // Обновляем UI, если окно открыто
-            //if (HydraHubView.CurrentInstance != null)
-            //{
-            //    HydraHubView.CurrentInstance.UpdateDownloadUI(game, HydraTorrent.LiveStatus[game.Id]);
-            //}
-
             // Обновляем статус в библиотеке Playnite
             var status = _api.Database.CompletionStatuses
                 .FirstOrDefault(s => s.Name.StartsWith("Загрузка:", StringComparison.OrdinalIgnoreCase));
@@ -335,6 +459,15 @@ namespace HydraTorrent.Services
                 game.CompletionStatusId = status.Id;
                 _api.Database.Games.Update(game);
             }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Публичный доступ к CompletedManager
+        // ────────────────────────────────────────────────────────────────
+
+        public CompletedManager GetCompletedManager()
+        {
+            return _completedManager;
         }
     }
 }
