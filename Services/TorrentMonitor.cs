@@ -166,10 +166,20 @@ namespace HydraTorrent.Services
                         {
                             await _client.ResumeAsync(item.TorrentHash);
 
-                            // Фиксируем время начала если ещё не зафиксировано
+                            // ✅ Фиксируем время начала если ещё не зафиксировано
                             if (item.GameId.HasValue && !_downloadStartTimes.ContainsKey(item.GameId.Value))
                             {
                                 _downloadStartTimes[item.GameId.Value] = DateTime.Now;
+                                HydraTorrent.logger.Debug($"[Stat] Зафиксировано время начала (Resume) для: {item.Name}");
+                            }
+                        }
+                        else
+                        {
+                            // ✅ Торрент уже качается - тоже фиксируем время если нет
+                            if (item.GameId.HasValue && !_downloadStartTimes.ContainsKey(item.GameId.Value))
+                            {
+                                _downloadStartTimes[item.GameId.Value] = DateTime.Now;
+                                HydraTorrent.logger.Debug($"[Stat] Зафиксировано время начала (Active) для: {item.Name}");
                             }
                         }
                     }
@@ -200,6 +210,17 @@ namespace HydraTorrent.Services
                     return;
 
                 var activeItems = queue.Where(q => q.QueueStatus == "Downloading").ToList();
+
+                // ✅ Фиксируем время начала для активных загрузок, если ещё не зафиксировано
+                // Это важно для корректного расчёта длительности
+                foreach (var activeItem in activeItems)
+                {
+                    if (activeItem.GameId.HasValue && !_downloadStartTimes.ContainsKey(activeItem.GameId.Value))
+                    {
+                        _downloadStartTimes[activeItem.GameId.Value] = DateTime.Now;
+                        HydraTorrent.logger.Debug($"[Stat] Зафиксировано время начала для: {activeItem.Name}");
+                    }
+                }
 
                 var allTorrents = await _client.GetTorrentListAsync();
 
@@ -417,22 +438,45 @@ namespace HydraTorrent.Services
                 item.SeedRatio = torrent.Ratio;
 
                 // Вычисляем длительность загрузки
-                if (item.GameId.HasValue && _downloadStartTimes.ContainsKey(item.GameId.Value))
+                if (item.GameId.HasValue)
                 {
-                    var startTime = _downloadStartTimes[item.GameId.Value];
-                    item.DownloadDuration = DateTime.Now - startTime;
-                    _downloadStartTimes.Remove(item.GameId.Value);
+                    // ✅ Проверяем, есть ли записанное время начала
+                    if (_downloadStartTimes.ContainsKey(item.GameId.Value))
+                    {
+                        var startTime = _downloadStartTimes[item.GameId.Value];
+                        item.DownloadDuration = DateTime.Now - startTime;
+                        _downloadStartTimes.Remove(item.GameId.Value);
+                    }
+                    else
+                    {
+                        // ✅ Если времени нет - оцениваем по прогрессу и скорости
+                        // Это приблизительная оценка на основе скачанных данных
+                        if (torrent.DownloadSpeed > 0 && torrent.Downloaded > 0)
+                        {
+                            // Оценка времени: downloaded / average_speed
+                            // Используем текущую скорость как приближение
+                            item.DownloadDuration = TimeSpan.FromSeconds(
+                                (double)torrent.Downloaded / Math.Max(torrent.DownloadSpeed, 1));
+                        }
+                    }
 
                     // Вычисляем среднюю скорость
                     if (item.DownloadDuration.HasValue && item.DownloadDuration.Value.TotalSeconds > 0)
                     {
                         item.AverageDownloadSpeed = (long)(item.TotalDownloadedBytes / item.DownloadDuration.Value.TotalSeconds);
                     }
+                    else if (torrent.DownloadSpeed > 0)
+                    {
+                        // Если длительность не вычислена, используем текущую скорость как приближение
+                        item.AverageDownloadSpeed = torrent.DownloadSpeed;
+                    }
                 }
 
                 HydraTorrent.logger.Info($"Статистика сохранена для {item.Name}: " +
                     $"Downloaded={FormatBytes(item.TotalDownloadedBytes)}, " +
                     $"Uploaded={FormatBytes(item.TotalUploadedBytes)}, " +
+                    $"Duration={item.DownloadDuration?.ToString(@"hh\:mm\:ss") ?? "N/A"}, " +
+                    $"AvgSpeed={FormatBytes(item.AverageDownloadSpeed)}/s, " +
                     $"Ratio={item.SeedRatio:F2}");
             }
             catch (Exception ex)

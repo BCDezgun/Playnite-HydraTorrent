@@ -483,9 +483,8 @@ namespace HydraTorrent.Views
                         var rankedGames = topGames.Select((g, i) => new
                         {
                             Rank = i + 1,
-                            GameName = g.GameName ?? g.Name,
-                            Size = StatisticsManager.FormatBytes(
-                                g.TotalDownloadedBytes > 0 ? g.TotalDownloadedBytes : g.SizeBytes)
+                            GameName = g.GameName ?? g.TorrentName,  // ✅ Используем GameName или TorrentName
+                            Size = StatisticsManager.FormatBytes(g.SizeBytes)  // ✅ Размер из TopGameRecord
                         }).ToList();
 
                         lstTopGames.ItemsSource = rankedGames;
@@ -494,6 +493,9 @@ namespace HydraTorrent.Views
                     {
                         lstTopGames.ItemsSource = null;
                     }
+
+                    if (txtNoTopGames != null)
+                        txtNoTopGames.Visibility = topGames.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
                 }
 
                 if (txtNoTopGames != null)

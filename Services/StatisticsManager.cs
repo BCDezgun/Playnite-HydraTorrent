@@ -9,6 +9,21 @@ using System.Linq;
 namespace HydraTorrent.Services
 {
     /// <summary>
+    /// Запись о топ-игре для статистики (сохраняется даже после удаления из Completed)
+    /// </summary>
+    public class TopGameRecord
+    {
+        public Guid GameId { get; set; }
+        public string GameName { get; set; }
+        public string TorrentName { get; set; }
+        public long SizeBytes { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public GameType Type { get; set; }
+
+        public TopGameRecord() { }
+    }
+
+    /// <summary>
     /// Модель для хранения агрегированной статистики
     /// </summary>
     public class DownloadStatistics
@@ -24,6 +39,11 @@ namespace HydraTorrent.Services
         public DateTime? LastDownloadAt { get; set; }
         public DateTime LastUpdated { get; set; }
 
+        /// <summary>
+        /// Топ игр по размеру (сохраняется даже после удаления из Completed)
+        /// </summary>
+        public List<TopGameRecord> TopGames { get; set; } = new List<TopGameRecord>();
+
         public DownloadStatistics()
         {
             TotalDownloads = 0;
@@ -34,6 +54,7 @@ namespace HydraTorrent.Services
             RepackCount = 0;
             UnknownCount = 0;
             LastUpdated = DateTime.Now;
+            TopGames = new List<TopGameRecord>();
         }
     }
 
@@ -78,7 +99,14 @@ namespace HydraTorrent.Services
             {
                 var json = File.ReadAllText(filePath);
                 _statistics = JsonConvert.DeserializeObject<DownloadStatistics>(json) ?? new DownloadStatistics();
-                logger.Info($"Статистика загружена: {_statistics.TotalDownloads} загрузок");
+
+                // ✅ Инициализируем TopGames если null (для старых файлов)
+                if (_statistics.TopGames == null)
+                {
+                    _statistics.TopGames = new List<TopGameRecord>();
+                }
+
+                logger.Info($"Статистика загружена: {_statistics.TotalDownloads} загрузок, {_statistics.TopGames.Count} в топе");
             }
             catch (Exception ex)
             {
@@ -131,6 +159,9 @@ namespace HydraTorrent.Services
                 _statistics.FirstDownloadAt = completedDates.Any() ? completedDates.Min() : null;
                 _statistics.LastDownloadAt = completedDates.Any() ? completedDates.Max() : null;
 
+                // ✅ Обновляем топ игр - добавляем новые, не удаляя старые
+                UpdateTopGames(items);
+
                 Save();
                 logger.Info("Статистика пересчитана из CompletedManager");
             }
@@ -138,6 +169,55 @@ namespace HydraTorrent.Services
             {
                 logger.Error(ex, "Ошибка пересчёта статистики");
             }
+        }
+
+        /// <summary>
+        /// Обновляет топ игр - добавляет новые записи, сохраняя старые
+        /// </summary>
+        private void UpdateTopGames(List<TorrentResult> items)
+        {
+            // Убедимся, что список инициализирован
+            if (_statistics.TopGames == null)
+            {
+                _statistics.TopGames = new List<TopGameRecord>();
+            }
+
+            foreach (var item in items)
+            {
+                if (!item.GameId.HasValue) continue;
+
+                var existingRecord = _statistics.TopGames.FirstOrDefault(t => t.GameId == item.GameId.Value);
+
+                if (existingRecord == null)
+                {
+                    // Добавляем новую запись
+                    _statistics.TopGames.Add(new TopGameRecord
+                    {
+                        GameId = item.GameId.Value,
+                        GameName = item.GameName ?? item.Name,
+                        TorrentName = item.Name,
+                        SizeBytes = item.TotalDownloadedBytes > 0 ? item.TotalDownloadedBytes : item.SizeBytes,
+                        CompletedAt = item.CompletedAt,
+                        Type = item.DetectedType
+                    });
+                    logger.Debug($"Добавлена игра в топ: {item.GameName ?? item.Name}");
+                }
+                else
+                {
+                    // Обновляем существующую запись
+                    existingRecord.SizeBytes = item.TotalDownloadedBytes > 0 ? item.TotalDownloadedBytes : item.SizeBytes;
+                    existingRecord.GameName = item.GameName ?? item.Name;
+                    existingRecord.TorrentName = item.Name;
+                    existingRecord.Type = item.DetectedType;
+                    if (item.CompletedAt.HasValue)
+                    {
+                        existingRecord.CompletedAt = item.CompletedAt;
+                    }
+                }
+            }
+
+            // Логируем количество
+            logger.Info($"Топ игр обновлён: {_statistics.TopGames.Count} записей");
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -192,9 +272,20 @@ namespace HydraTorrent.Services
             return (double)_statistics.TotalBytesUploaded / _statistics.TotalBytesDownloaded;
         }
 
-        public List<TorrentResult> GetTopGamesBySize(int count = 5)
+        /// <summary>
+        /// Возвращает топ N игр по размеру из сохранённой статистики
+        /// </summary>
+        public List<TopGameRecord> GetTopGamesBySize(int count = 5)
         {
-            return _completedManager.GetTopBySize(count);
+            if (_statistics.TopGames == null || !_statistics.TopGames.Any())
+            {
+                return new List<TopGameRecord>();
+            }
+
+            return _statistics.TopGames
+                .OrderByDescending(g => g.SizeBytes)
+                .Take(count)
+                .ToList();
         }
 
         // ────────────────────────────────────────────────────────────────
