@@ -182,4 +182,51 @@
     <sys:String x:Key="LOC_HydraTorrent_DeleteError">Ошибка удаления: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoDownloadToDelete">Нет активной загрузки для удаления.</sys:String>
 
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ПОСТ-ОБРАБОТКА ЗАГРУЗОК (GameSetupService) -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+
+    <!-- Диалог выбора исполняемого файла -->
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutable">Выберите файл для запуска</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameName">Игра:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Size">Размер:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Confirm">Подтвердить</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Cancel">Отмена</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectOther">Выбрать другой файл...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableHint">Пожалуйста, выберите исполняемый файл</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableFile">Выберите исполняемый файл</sys:String>
+
+    <!-- Уведомления -->
+    <sys:String x:Key="LOC_HydraTorrent_RepackReady">Репак "{0}" готов к установке. Нажмите кнопку "Install" для начала.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AutoConfigured">✅ «{0}» настроена автоматически: {1}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SetupComplete">✅ «{0}» готова к запуску!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SetupNotFound">Файл setup.exe не найден для "{0}". Путь: {1}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackDetected">📦 «{0}» — репак. Требуется установка.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoExecutablesFound">⚠️ Не найдены .exe файлы для «{0}»</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ManualSetupRequired">⚙️ «{0}» требует ручной настройки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadCompleted">Загрузка завершена</sys:String>
+
+    <!-- Причины скоринга -->
+    <sys:String x:Key="LOC_HydraTorrent_ReasonExactMatch">Точное совпадение имени</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonContainsName">Имя файла содержит название игры</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonPartialMatch">Частичное совпадение имени</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSimilarMatch">Похожее имя ({0}%)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonVeryLargeSize">Очень большой размер файла</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLargeSize">Крупный размер файла</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonMediumSize">Средний размер файла</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSmallSize">Маленький размер (возможно утилита)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonProductName">ProductName содержит название игры</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonKnownPublisher">Известный издатель игры</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonInstallerCompany">Компания-создатель установщика</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSetupDescription">Описание указывает на установщик</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSteamDll">Обнаружен Steam API</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonUnityDll">Обнаружен Unity движок</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonGameFolders">Найдены игровые папки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonGameFiles">Найдены игровые файлы</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonInstallerFiles">Найдены файлы установщика</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherLarge">Launcher.exe крупного размера</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherProductName">Launcher.exe: ProductName содержит игру</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherPublisher">Launcher.exe: известный издатель</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonManualSelection">Выбран вручную</sys:String>
+
 </ResourceDictionary>

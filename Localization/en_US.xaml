@@ -182,4 +182,52 @@
     <sys:String x:Key="LOC_HydraTorrent_DeleteError">Delete error: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoDownloadToDelete">No active download to delete.</sys:String>
 
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- POST-DOWNLOAD PROCESSING (GameSetupService) -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+
+    <!-- Executable selection dialog -->
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutable">Select Executable File</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameName">Game:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Size">Size:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Confirm">Confirm</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Cancel">Cancel</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectOther">Select other file...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableHint">Please select an executable file</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableFile">Select executable file</sys:String>
+
+    <!-- Notifications -->
+    <sys:String x:Key="LOC_HydraTorrent_RepackReady">Repack "{0}" is ready to install. Click "Install" button to start.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AutoConfigured">✅ «{0}» auto-configured: {1}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SetupComplete">✅ «{0}» is ready to play!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SetupNotFound">setup.exe not found for "{0}". Path: {1}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackDetected">📦 «{0}» is a repack. Installation required.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoExecutablesFound">⚠️ No .exe files found for «{0}»</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ManualSetupRequired">⚙️ «{0}» requires manual setup</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadCompleted">Download completed</sys:String>
+
+    <!-- Scoring reasons -->
+    <sys:String x:Key="LOC_HydraTorrent_ReasonExactMatch">Exact name match</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonContainsName">Filename contains game name</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonPartialMatch">Partial name match</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSimilarMatch">Similar name ({0}%)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonVeryLargeSize">Very large file size</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLargeSize">Large file size</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonMediumSize">Medium file size</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSmallSize">Small file (possibly utility)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonProductName">ProductName contains game name</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonKnownPublisher">Known game publisher</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonInstallerCompany">Installer company detected</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSetupDescription">Description indicates installer</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonSteamDll">Steam API detected</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonUnityDll">Unity engine detected</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonGameFolders">Game folders found</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonGameFiles">Game files found</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonInstallerFiles">Installer files found</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherLarge">Large Launcher.exe file</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherProductName">Launcher.exe: ProductName contains game</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonLauncherPublisher">Launcher.exe: known publisher</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonManualSelection">Manually selected</sys:String>
+    
+
 </ResourceDictionary>

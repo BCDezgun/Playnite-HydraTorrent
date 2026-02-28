@@ -100,6 +100,8 @@
     <Compile Include="HydraTorrentSettingsView.xaml.cs">
       <DependentUpon>HydraTorrentSettingsView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Models\ExecutableCandidate.cs" />
+    <Compile Include="Models\GameType.cs" />
     <Compile Include="Models\HydraRepack.cs" />
     <Compile Include="Models\TorrentResult.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -108,7 +110,11 @@
     <Compile Include="SearchWindow.xaml.cs">
       <DependentUpon>SearchWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Services\GameSetupService.cs" />
     <Compile Include="Services\TorrentMonitor.cs" />
+    <Compile Include="Views\ExecutableSelectionWindow.xaml.cs">
+      <DependentUpon>ExecutableSelectionWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\HydraHubView.xaml.cs">
       <DependentUpon>HydraHubView.xaml</DependentUpon>
     </Compile>
@@ -147,6 +153,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="SearchWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ExecutableSelectionWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

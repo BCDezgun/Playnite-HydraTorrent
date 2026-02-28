@@ -663,13 +663,11 @@ namespace HydraTorrent.Views
 
                     if (!string.IsNullOrEmpty(game.BackgroundImage))
                     {
-                        imageFileName = game.BackgroundImage;
-                        System.Diagnostics.Debug.WriteLine($"[Hydra] Using BackgroundImage: {imageFileName}");
+                        imageFileName = game.BackgroundImage;                        
                     }
                     else if (!string.IsNullOrEmpty(game.CoverImage))
                     {
-                        imageFileName = game.CoverImage;
-                        System.Diagnostics.Debug.WriteLine($"[Hydra] Using CoverImage: {imageFileName}");
+                        imageFileName = game.CoverImage;                        
                     }
 
                     if (string.IsNullOrEmpty(imageFileName))
@@ -698,11 +696,9 @@ namespace HydraTorrent.Views
                         bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
                         bitmap.EndInit();
                         imgGameBackground.Source = bitmap;
-                        System.Diagnostics.Debug.WriteLine($"[Hydra] Image loaded: {fullImagePath}");
                     }
                     else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Hydra] Image file not found: {fullImagePath}");
+                    {                        
                         imgGameBackground.Source = null;
                     }
                 }

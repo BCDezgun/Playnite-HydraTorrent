@@ -1,4 +1,5 @@
 ﻿using System;
+using HydraTorrent.Models;
 
 namespace HydraTorrent.Models
 {
@@ -23,12 +24,38 @@ namespace HydraTorrent.Models
         public string QueueStatus { get; set; }        // "Queued", "Downloading", "Paused", "Completed"
         public DateTime? AddedToQueueAt { get; set; }  // Время добавления в очередь
 
+        // ────────────────────────────────────────────────────────────────
+        // Свойства для пост-обработки после загрузки
+        // ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Путь к папке с загруженными файлами
+        /// </summary>
+        public string DownloadPath { get; set; }
+
+        /// <summary>
+        /// Тип загруженной игры (определяется после завершения загрузки)
+        /// </summary>
+        public GameType DetectedType { get; set; } = GameType.Unknown;
+
+        /// <summary>
+        /// Настроен ли запуск игры в Playnite
+        /// </summary>
+        public bool IsConfigured { get; set; } = false;
+
+        /// <summary>
+        /// Путь к исполняемому файлу (заполняется после анализа)
+        /// </summary>
+        public string ExecutablePath { get; set; }
+
         // Конструктор по умолчанию для JSON сериализации
         public TorrentResult()
         {
             QueuePosition = -1; // -1 означает "не в очереди"
             QueueStatus = null;
             SizeBytes = 0;
+            DetectedType = GameType.Unknown;
+            IsConfigured = false;
         }
     }
 }

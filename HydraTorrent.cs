@@ -356,7 +356,15 @@ namespace HydraTorrent
                 ? ShowCustomInstallPathDialog(game.Name)
                 : qb.DefaultDownloadPath;
 
-            if (string.IsNullOrEmpty(finalPath)) return;
+            if (string.IsNullOrEmpty(finalPath))
+            {
+                logger.Warn($"Путь установки не выбран для: {game.Name}");
+                return;
+            }
+
+            // ✅ Сохраняем путь загрузки
+            torrentData.DownloadPath = finalPath;
+            logger.Info($"[DEBUG] DownloadPath сохранён: {finalPath}");
 
             try
             {
@@ -387,6 +395,7 @@ namespace HydraTorrent
                         RecalculateQueuePositions();
                         SaveQueue();
                         SaveHydraData(game, torrentData);
+                        logger.Info($"[DEBUG] Очередь и данные сохранены");
 
                         int position = torrentData.QueuePosition;
 

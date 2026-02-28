@@ -1,0 +1,224 @@
+﻿<UserControl x:Class="HydraTorrent.Views.ExecutableSelectionWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             Width="550" Height="450"
+             Background="#1E1E1E">
+
+    <UserControl.Resources>
+        <Style x:Key="CandidateRadioButton" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="10,5"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="border" Background="#252525" 
+                                BorderBrush="#444" 
+                                BorderThickness="1" 
+                                CornerRadius="8"
+                                Padding="15,10"
+                                Margin="0,3">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <BulletDecorator Grid.Column="0" VerticalAlignment="Top" Margin="0,0,10,0">
+                                    <BulletDecorator.Bullet>
+                                        <RadioButton IsChecked="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}}" 
+                                                     Style="{x:Null}"/>
+                                    </BulletDecorator.Bullet>
+                                </BulletDecorator>
+
+                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#2ECC71"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1A3D2E"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#2ECC71"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GreenButton" TargetType="Button">
+            <Setter Property="Background" Value="#2ECC71"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="25,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#27AE60"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GrayButton" TargetType="Button">
+            <Setter Property="Background" Value="#444"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="25,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#555"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_SelectExecutable}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       Foreground="White"/>
+        </StackPanel>
+
+        <!-- Название игры -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,15">
+            <TextBlock Foreground="#888" FontSize="12">
+                <Run Text="{DynamicResource LOC_HydraTorrent_GameName}"/>
+                <Run x:Name="txtGameName" FontWeight="Bold" Foreground="#2ECC71"/>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Список кандидатов -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,0,0,15">
+            <ItemsControl x:Name="lstCandidates">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <RadioButton Style="{StaticResource CandidateRadioButton}"
+                                     GroupName="ExecutableSelection"
+                                     Tag="{Binding}">
+                            <StackPanel>
+                                <!-- Имя файла и уверенность -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" 
+                                               Text="{Binding FileName}" 
+                                               FontWeight="SemiBold" 
+                                               FontSize="14"
+                                               Foreground="White"/>
+
+                                    <Border Grid.Column="1"
+                                            Background="#2ECC71"
+                                            CornerRadius="4"
+                                            Padding="8,2"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding ConfidencePercentage}"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="White"/>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Путь -->
+                                <TextBlock Text="{Binding Directory}"
+                                           FontSize="10"
+                                           Foreground="#666"
+                                           Margin="0,2,0,5"
+                                           TextTrimming="CharacterEllipsis"/>
+
+                                <!-- Размер -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                    <TextBlock Text="{DynamicResource LOC_HydraTorrent_Size}"
+                                               FontSize="11"
+                                               Foreground="#888"/>
+                                    <TextBlock Text="{Binding FileSizeFormatted}"
+                                               FontSize="11"
+                                               Foreground="#AAA"
+                                               Margin="5,0,0,0"/>
+                                </StackPanel>
+
+                                <!-- Причины -->
+                                <ItemsControl ItemsSource="{Binding ScoreReasons}" Margin="0,5,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="0,1">
+                                                <TextBlock Text="•" 
+                                                           Foreground="#2ECC71" 
+                                                           FontSize="10"
+                                                           Margin="0,0,5,0"/>
+                                                <TextBlock Text="{Binding}" 
+                                                           FontSize="10" 
+                                                           Foreground="#888"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </RadioButton>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Кнопки -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="btnBrowse"
+                    Content="{DynamicResource LOC_HydraTorrent_SelectOther}"
+                    Style="{StaticResource GrayButton}"
+                    Margin="0,0,10,0"
+                    Click="BtnBrowse_Click"/>
+            <Button x:Name="btnCancel"
+                    Content="{DynamicResource LOC_HydraTorrent_Cancel}"
+                    Style="{StaticResource GrayButton}"
+                    Margin="0,0,10,0"
+                    Click="BtnCancel_Click"/>
+            <Button x:Name="btnConfirm"
+                    Content="{DynamicResource LOC_HydraTorrent_Confirm}"
+                    Style="{StaticResource GreenButton}"
+                    Click="BtnConfirm_Click"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
