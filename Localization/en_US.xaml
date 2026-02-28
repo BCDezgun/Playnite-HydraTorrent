@@ -153,6 +153,7 @@
     <sys:String x:Key="LOC_HydraTorrent_DownloadErrorConnect">Download error: Could not connect to qBittorrent. Check settings.</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_TorrentRemovedRatio">Torrent removed from client: {0} (ratio: {1})</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_GameAdded">Game added: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Torrent for "{0}" deleted, downloaded files preserved</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          INSTALLATION
@@ -233,6 +234,13 @@
     <sys:String x:Key="LOC_HydraTorrent_ManualSetupRequired">Manual setup required: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SetupNotFound">setup.exe not found for: {0}. Path: {1}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SelectExecutable">Select Executable</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameName">Game:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Size">Size:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectOther">Browse...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Confirm">Confirm</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableHint">Please select an executable file</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableFile">Select .exe file</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonManualSelection">Manually selected</sys:String>
 
     <!-- Scoring Reasons -->
     <sys:String x:Key="LOC_HydraTorrent_ReasonExactMatch">Exact name match</sys:String>

@@ -436,6 +436,14 @@ namespace HydraTorrent
                             NotificationType.Info));
 
                         logger.Info($"Начата загрузка: {game.Name}");
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(500);
+                            if (HydraHubView.CurrentInstance != null)
+                            {
+                                HydraHubView.CurrentInstance.RefreshQueueUI();
+                            }
+                        });
                     }
 
                     game.IsInstalling = true;

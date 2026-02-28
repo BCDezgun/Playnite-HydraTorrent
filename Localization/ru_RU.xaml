@@ -153,6 +153,7 @@
     <sys:String x:Key="LOC_HydraTorrent_DownloadErrorConnect">Ошибка загрузки: не удалось подключиться к qBittorrent. Проверьте настройки.</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_TorrentRemovedRatio">Торрент удалён из клиента: {0} (ratio: {1})</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_GameAdded">Игра добавлена: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Торрент для "{0}" удалён, скачанные файлы сохранены</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          УСТАНОВКА
@@ -233,6 +234,13 @@
     <sys:String x:Key="LOC_HydraTorrent_ManualSetupRequired">Требуется ручная настройка: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SetupNotFound">setup.exe не найден для: {0}. Путь: {1}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SelectExecutable">Выберите исполняемый файл</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameName">Игра:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Size">Размер:</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectOther">Выбрать другой...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Confirm">Подтвердить</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableHint">Пожалуйста, выберите исполняемый файл</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectExecutableFile">Выберите .exe файл</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ReasonManualSelection">Выбрано вручную</sys:String>
 
     <!-- Причины скоринга -->
     <sys:String x:Key="LOC_HydraTorrent_ReasonExactMatch">Точное совпадение имени</sys:String>

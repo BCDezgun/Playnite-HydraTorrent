@@ -586,7 +586,7 @@
                                                                         CornerRadius="6"
                                                                         Background="#30000000"
                                                                         Margin="0,0,10,0">
-                                                                    <Image x:Name="imgCompletedCover"
+                                                                    <Image x:Name="imgQueueCover"
                                                                             Stretch="UniformToFill"
                                                                             RenderOptions.BitmapScalingMode="HighQuality"/>
                                                                 </Border>
@@ -767,8 +767,9 @@
                                                     CornerRadius="6"
                                                     Background="#30000000"
                                                     Margin="0,0,10,0">
-                                                                    <Image Stretch="UniformToFill"
-                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                    <Image x:Name="imgCompletedCover"
+                                                                            Stretch="UniformToFill"
+                                                                            RenderOptions.BitmapScalingMode="HighQuality"/>
                                                                 </Border>
 
                                                                 <!-- Информация -->
