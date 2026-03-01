@@ -128,6 +128,15 @@ namespace HydraTorrent.Services
             return _removedHashes.Contains(hash);
         }
 
+        public void RemoveRemovedHash(string hash)
+        {
+            if (_removedHashes.Contains(hash))
+            {
+                _removedHashes.Remove(hash);
+                Save();
+            }
+        }
+
         /// <summary>
         /// Очищает список удалённых хешей
         /// </summary>

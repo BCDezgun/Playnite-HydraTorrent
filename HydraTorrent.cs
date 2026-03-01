@@ -354,6 +354,12 @@ namespace HydraTorrent
             }
 
             torrentData.TorrentHash = hash;
+            var removedHashesMgr = _completedManager?.GetRemovedHashesManager();
+            if (removedHashesMgr != null && removedHashesMgr.IsRemoved(hash))
+            {
+                removedHashesMgr.RemoveRemovedHash(hash);
+                logger.Info($"Хеш очищен из RemovedHashesManager для повторной загрузки: {hash}");
+            }
             torrentData.GameId = game.Id;
             torrentData.AddedToQueueAt = DateTime.Now;
             torrentData.GameName = game.Name;

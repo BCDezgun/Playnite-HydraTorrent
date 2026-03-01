@@ -54,8 +54,8 @@
             </DockPanel>
         </Border>
 
-        <TabControl x:Name="MainTabControl" Margin="0,8,0,0" Background="Transparent" BorderThickness="0" Cursor="Arrow">
-            <TabItem Header="{DynamicResource LOC_HydraTorrent_TabSearch}" Cursor="Hand">
+        <TabControl x:Name="MainTabControl" SelectionChanged="MainTabControl_SelectionChanged" Margin="0,8,0,0" Background="Transparent" BorderThickness="0" Cursor="Arrow">
+            <TabItem x:Name="tabSearch" Header="{DynamicResource LOC_HydraTorrent_TabSearch}" Cursor="Hand">
                 <Grid Margin="15">
                     <Grid Margin="0,0,0,15" Height="40" VerticalAlignment="Top">
                         <Grid.ColumnDefinitions>
@@ -246,7 +246,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="{DynamicResource LOC_HydraTorrent_TabDownloads}" Cursor="Hand">
+            <TabItem x:Name="tabDownloads" Header="{DynamicResource LOC_HydraTorrent_TabDownloads}" Cursor="Hand">
                 <Grid Background="Transparent">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="2*"/>
@@ -515,9 +515,9 @@
                         <Grid>
                             <!-- TabControl для под-вкладок Очередь/Завершённые -->
                             <TabControl x:Name="QueueTabControl" 
-                    Background="Transparent" 
-                    BorderThickness="0"
-                    Margin="0,5,0,0">
+                                        Background="Transparent" 
+                                        BorderThickness="0"
+                                        Margin="0,5,0,0">
 
                                 <!-- Стиль для TabItem -->
                                 <TabControl.Resources>
@@ -551,7 +551,7 @@
                                 <!-- ═══════════════════════════════════════════════════════════ -->
                                 <!-- ПОД-ВКЛАДКА: ОЧЕРЕДЬ -->
                                 <!-- ═══════════════════════════════════════════════════════════ -->
-                                <TabItem Header="{DynamicResource LOC_HydraTorrent_TabQueue}" Cursor="Hand">
+                                <TabItem x:Name="tabQueue" Header="{DynamicResource LOC_HydraTorrent_TabQueue}" Cursor="Hand">
                                     <Grid>
                                         <!-- Пустая очередь -->
                                         <TextBlock x:Name="txtQueueEmpty"
@@ -641,14 +641,33 @@
 
                                                                 <!-- Кнопки управления -->
                                                                 <StackPanel Grid.Column="2" 
-                                                        Orientation="Horizontal" 
-                                                        VerticalAlignment="Center"
-                                                        Margin="10,0,0,0">
+                                                                            Orientation="Horizontal" 
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="10,0,0,0">
+                                                                    <!-- Force Start (Play) - только для элементов в очереди -->
+                                                                    <Button Width="32" Height="32" Margin="0,0,5,0"
+                                                                            Background="#30FFFFFF" BorderThickness="0" Cursor="Hand"
+                                                                            ToolTip="{DynamicResource LOC_HydraTorrent_ForceStart}"
+                                                                            Click="BtnQueueForceStart_Click">
+                                                                        <Button.Template>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                                                                    <Path Data="M8,5.14V19.14L19,12.14L8,5.14Z" 
+                                                                                          Fill="#4CAF50" Stretch="Uniform" Width="12" Height="12"/>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                                        <Setter Property="Background" Value="#50FFFFFF"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Button.Template>
+                                                                    </Button>
                                                                     <!-- Вверх -->
                                                                     <Button Width="32" Height="32" Margin="0,0,5,0"
-                                                        Background="#30FFFFFF" BorderThickness="0" Cursor="Hand"
-                                                        ToolTip="{DynamicResource LOC_HydraTorrent_MoveUp}"
-                                                        Click="BtnQueueUp_Click">
+                                                                            Background="#30FFFFFF" BorderThickness="0" Cursor="Hand"
+                                                                            ToolTip="{DynamicResource LOC_HydraTorrent_MoveUp}"
+                                                                            Click="BtnQueueUp_Click">
                                                                         <Button.Template>
                                                                             <ControlTemplate TargetType="Button">
                                                                                 <Border Background="{TemplateBinding Background}" CornerRadius="4">
@@ -716,15 +735,15 @@
                                 <!-- ═══════════════════════════════════════════════════════════ -->
                                 <!-- ПОД-ВКЛАДКА: ЗАВЕРШЁННЫЕ -->
                                 <!-- ═══════════════════════════════════════════════════════════ -->
-                                <TabItem Header="{DynamicResource LOC_HydraTorrent_TabCompleted}" Cursor="Hand">
+                                <TabItem x:Name="tabCompleted" Header="{DynamicResource LOC_HydraTorrent_TabCompleted}" Cursor="Hand">
                                     <Grid>
                                         <!-- Кнопка очистки -->
                                         <Button x:Name="btnClearCompleted" 
-                            Content="{DynamicResource LOC_HydraTorrent_CompletedClearAll}"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Margin="0,5,10,0" Padding="12,5"
-                            Background="#30FFFFFF" Foreground="White"
-                            Click="BtnClearCompleted_Click" Cursor="Hand">
+                                                Content="{DynamicResource LOC_HydraTorrent_CompletedClearAll}"
+                                                HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="0,5,10,0" Padding="12,5"
+                                                Background="#30FFFFFF" Foreground="White"
+                                                Click="BtnClearCompleted_Click" Cursor="Hand">
                                             <Button.Template>
                                                 <ControlTemplate TargetType="Button">
                                                     <Border Background="{TemplateBinding Background}" CornerRadius="4">
@@ -868,7 +887,7 @@
                     </Border>
                 </Grid>
             </TabItem>
-            <TabItem Header="{DynamicResource LOC_HydraTorrent_TabStatistics}" Cursor="Hand">
+            <TabItem x:Name="tabStatistics" Header="{DynamicResource LOC_HydraTorrent_TabStatistics}" Cursor="Hand">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="15">
                     <Grid>
                         <Grid.RowDefinitions>

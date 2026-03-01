@@ -41,7 +41,7 @@ namespace HydraTorrent.Services
             var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
             _client = new QBittorrentClient(url);
             _gameSetupService = new GameSetupService(_plugin);
-            _completedManager = new CompletedManager(_plugin);
+            _completedManager = null;
 
             _statisticsManager = new StatisticsManager(plugin.GetPluginUserDataPath(), _completedManager);
             _statisticsManager.Load();
@@ -62,8 +62,8 @@ namespace HydraTorrent.Services
                     var qb = _plugin.GetSettings().Settings;
                     await _client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
 
-                    // Загружаем список завершённых
-                    _completedManager.LoadCompletedItems();
+                    // ✅ Инициализируем менеджеры из плагина (ПОСЛЕ подключения к qBittorrent)
+                    InitializeManagers();
 
                     _timer.Start();
                     _isRunning = true;
@@ -94,6 +94,13 @@ namespace HydraTorrent.Services
         private async void Timer_Elapsed(object sender, ElapsedEventArgs e)
         {
             if (!_isRunning) return;
+
+            // ✅ Безопасная проверка на случай если Start() ещё не завершился
+            if (_completedManager == null)
+            {
+                InitializeManagers();
+                if (_completedManager == null) return;
+            }
 
             try
             {
@@ -211,8 +218,7 @@ namespace HydraTorrent.Services
 
                 var activeItems = queue.Where(q => q.QueueStatus == "Downloading").ToList();
 
-                // ✅ Фиксируем время начала для активных загрузок, если ещё не зафиксировано
-                // Это важно для корректного расчёта длительности
+                // ✅ Фиксируем время начала
                 foreach (var activeItem in activeItems)
                 {
                     if (activeItem.GameId.HasValue && !_downloadStartTimes.ContainsKey(activeItem.GameId.Value))
@@ -223,7 +229,6 @@ namespace HydraTorrent.Services
                 }
 
                 var allTorrents = await _client.GetTorrentListAsync();
-
                 var settings = _plugin.GetSettings().Settings;
 
                 foreach (var item in activeItems)
@@ -267,7 +272,13 @@ namespace HydraTorrent.Services
 
                             // ✅ Добавляем в список завершённых
                             _completedManager.AddCompletedItem(item);
-                            _statisticsManager.RecalculateFromCompleted();
+
+                            // ────────────────────────────────────────────────────────────────
+                            // ✅ НОВОЕ: Добавляем в накопительную статистику!
+                            // ────────────────────────────────────────────────────────────────
+                            _statisticsManager.AddCompletedDownload(item);
+                            _statisticsManager.Save();
+
                             _plugin.DownloadQueue.Remove(item);
                             _plugin.SaveQueue();
 
@@ -290,7 +301,6 @@ namespace HydraTorrent.Services
                         // ✅ Проверяем настройки раздачи
                         if (!settings.KeepSeedingAfterDownload)
                         {
-                            // Удаляем торрент из qBittorrent, файлы сохраняем
                             await RemoveTorrentFromClientAsync(item.TorrentHash);
                             item.IsRemovedFromClient = true;
                         }
@@ -376,6 +386,18 @@ namespace HydraTorrent.Services
             catch (Exception ex)
             {
                 HydraTorrent.logger.Error(ex, "Ошибка проверки seed ratio");
+            }
+        }
+
+        public void InitializeManagers()
+        {
+            if (_completedManager == null)
+            {
+                _completedManager = _plugin.GetCompletedManager();
+            }
+            if (_statisticsManager == null)
+            {
+                _statisticsManager = _plugin.GetStatisticsManager();
             }
         }
 

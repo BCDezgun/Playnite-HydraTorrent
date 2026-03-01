@@ -16,15 +16,18 @@
     <!-- ═══════════════════════════════════════════════════════════════════
          SEARCH
          ═══════════════════════════════════════════════════════════════════ -->
-    <sys:String x:Key="LOC_HydraTorrent_SearchPlaceholder">Enter game name...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SearchPlaceholder">Enter game name and press Search</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SearchButton">Search</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_Searching">Searching...</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_NoResults">Nothing found</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Searching">🔎 Searching «{0}»...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EnterGameName">Enter game name!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResults">Nothing found 😔</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ResultsFound">Found: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Sources">Sources</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_AllSources">All sources</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SearchFilters">Search Filters</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_MoreFilters">More filters coming soon...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResultsForFilters">No results for selected filters</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameAdded">✅ «{0}» added!</sys:String>
 
     <!-- Pagination -->
     <sys:String x:Key="LOC_HydraTorrent_PageInfo">Page {1} of {2} ({0} results)</sys:String>
@@ -78,6 +81,7 @@
     <sys:String x:Key="LOC_HydraTorrent_MoveToBottom">Move to bottom</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_MoveUp">Move up</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_MoveDown">Move down</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStart">Start download this game</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          COMPLETED DOWNLOADS
@@ -152,8 +156,10 @@
     <sys:String x:Key="LOC_HydraTorrent_DownloadError">Download error: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_DownloadErrorConnect">Download error: Could not connect to qBittorrent. Check settings.</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_TorrentRemovedRatio">Torrent removed from client: {0} (ratio: {1})</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_GameAdded">Game added: {0}</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Torrent for "{0}" deleted, downloaded files preserved</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedGameKept">Torrent deleted, game kept in library</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmForceStart">Start «{0}»? Current active download will be paused.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStartTitle">Force Start</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Torrent for "{0}" has been removed, the data in the library has been saved.</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          INSTALLATION

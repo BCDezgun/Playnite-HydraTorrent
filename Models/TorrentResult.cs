@@ -85,7 +85,7 @@ namespace HydraTorrent.Models
         /// <summary>
         /// Время загрузки (длительность)
         /// </summary>
-        public TimeSpan? DownloadDuration { get; set; }
+        public TimeSpan? DownloadDuration { get; set; }        
 
         // Конструктор по умолчанию для JSON сериализации
         public TorrentResult()

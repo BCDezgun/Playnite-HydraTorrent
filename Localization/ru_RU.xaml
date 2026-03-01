@@ -16,15 +16,17 @@
     <!-- ═══════════════════════════════════════════════════════════════════
          ПОИСК
          ═══════════════════════════════════════════════════════════════════ -->
-    <sys:String x:Key="LOC_HydraTorrent_SearchPlaceholder">Введите название игры...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SearchPlaceholder">Введите название игры и нажмите Найти</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SearchButton">Найти</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_Searching">Поиск...</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_NoResults">Ничего не найдено</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Searching">🔎 Ищем «{0}»...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResults">Ничего не найдено 😔</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ResultsFound">Найдено: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Sources">Источники</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_AllSources">Все источники</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SearchFilters">Фильтры поиска</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_MoreFilters">Больше фильтров скоро...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoResultsForFilters">Нет результатов для выбранных фильтров</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameAdded">✅ «{0}» добавлена!</sys:String>
 
     <!-- Пагинация -->
     <sys:String x:Key="LOC_HydraTorrent_PageInfo">Страница {1} из {2} ({0} результатов)</sys:String>
@@ -78,6 +80,7 @@
     <sys:String x:Key="LOC_HydraTorrent_MoveToBottom">В конец</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_MoveUp">Вверх</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_MoveDown">Вниз</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStart">Начать загрузку этой игры</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          ЗАВЕРШЁННЫЕ ЗАГРУЗКИ
@@ -152,8 +155,10 @@
     <sys:String x:Key="LOC_HydraTorrent_DownloadError">Ошибка загрузки: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_DownloadErrorConnect">Ошибка загрузки: не удалось подключиться к qBittorrent. Проверьте настройки.</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_TorrentRemovedRatio">Торрент удалён из клиента: {0} (ratio: {1})</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_GameAdded">Игра добавлена: {0}</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Торрент для "{0}" удалён, скачанные файлы сохранены</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedGameKept">Торрент удален, игра осталась в библиотеке.</sys:String>    
+    <sys:String x:Key="LOC_HydraTorrent_TorrentDeletedDataSaved">Торрент для "{0}" удалён, данные в библиотеке сохранены</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ForceStartTitle">Принудительный старт</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConfirmForceStart">Запустить «{0}»? Текущая активная загрузка будет поставлена на паузу.</sys:String>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          УСТАНОВКА

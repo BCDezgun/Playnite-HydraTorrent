@@ -175,13 +175,21 @@ namespace HydraTorrent.Views
 
         public void UpdateCompletedUI()
         {
-            if (_completedManager == null) return;
+            if (_completedManager == null)
+            {
+                HydraTorrent.logger.Info("[Completed] _completedManager is null");
+                return;
+            }
+
+            HydraTorrent.logger.Info("[Completed] UpdateCompletedUI called");
 
             Dispatcher.Invoke(() =>
             {
                 var items = _completedManager.CompletedItems
                     .OrderByDescending(c => c.CompletedAt)
                     .ToList();
+
+                HydraTorrent.logger.Info($"[Completed] Items count: {items.Count}");
 
                 if (lstCompleted != null)
                 {
@@ -193,7 +201,6 @@ namespace HydraTorrent.Views
                     txtCompletedEmpty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
                 }
 
-                // Загружаем обложки
                 if (items.Count > 0)
                 {
                     LoadCompletedCoversWithRetry(items, 0);
@@ -203,26 +210,46 @@ namespace HydraTorrent.Views
 
         private async void LoadCompletedCoversWithRetry(List<TorrentResult> items, int attempt)
         {
-            if (attempt >= 3 || lstCompleted == null) return;
+            if (attempt >= 3 || lstCompleted == null)
+            {
+                HydraTorrent.logger.Info($"[Completed] Прерывание: attempt={attempt}, lstCompleted={lstCompleted == null}");
+                return;
+            }
 
             await Task.Delay(150 * (attempt + 1));
 
             _ = Dispatcher.InvokeAsync(() =>
             {
+                int loadedCount = 0;
+                int nullContainers = 0;
+                int nullImages = 0;
+
                 foreach (var item in items)
                 {
                     if (!item.GameId.HasValue) continue;
 
                     var container = lstCompleted.ItemContainerGenerator.ContainerFromItem(item) as ContentPresenter;
-                    if (container == null) continue;
+                    if (container == null)
+                    {
+                        nullContainers++;
+                        continue;
+                    }
 
-                    // ✅ Ищем Image по имени
-                    var imgControl = FindVisualChild<Image>(container, "imgCompletedCover");
-                    if (imgControl != null && imgControl.Source == null)
+                    var imgControl = FindVisualChild<Image>(container);
+                    if (imgControl == null)
+                    {
+                        nullImages++;
+                        continue;
+                    }
+
+                    if (imgControl.Source == null)
                     {
                         LoadQueueItemCover(imgControl, item.GameId.Value);
+                        loadedCount++;
                     }
                 }
+
+                HydraTorrent.logger.Info($"[Completed] Попытка {attempt}: loaded={loadedCount}, nullContainers={nullContainers}, nullImages={nullImages}");
 
                 // Повторная попытка если не все загрузились
                 var stillEmpty = items.Any(i =>
@@ -230,7 +257,7 @@ namespace HydraTorrent.Views
                     if (!i.GameId.HasValue) return false;
                     var c = lstCompleted.ItemContainerGenerator.ContainerFromItem(i) as ContentPresenter;
                     if (c == null) return true;
-                    var img = FindVisualChild<Image>(c, "imgCompletedCover");
+                    var img = FindVisualChild<Image>(c);
                     return img?.Source == null;
                 });
 
@@ -280,7 +307,7 @@ namespace HydraTorrent.Views
 
         private async void BtnQueueDelete_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is TorrentResult item && item.GameId.HasValue)
+            if ((sender as Button)?.DataContext is TorrentResult item && item.GameId.HasValue)
             {
                 var game = PlayniteApi.Database.Games.Get(item.GameId.Value);
                 var torrentData = _plugin.GetHydraData(game);
@@ -291,11 +318,29 @@ namespace HydraTorrent.Views
                     MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
                     // Удаляем из очереди
-                    _plugin.DownloadQueue.Remove(item);
-                    _plugin.SaveQueue();
-                    _plugin.RecalculateQueuePositions();
+                    var queueItem = _plugin.DownloadQueue.FirstOrDefault(q => q.GameId == item.GameId);
+                    if (queueItem != null)
+                    {
+                        _plugin.DownloadQueue.Remove(queueItem);
+                        _plugin.SaveQueue();
+                        _plugin.RecalculateQueuePositions();
+                        HydraTorrent.logger.Info($"Удалено из очереди: {item.GameName}");
+                    }
 
-                    // Удаляем торрент из qBittorrent
+                    // ✅ ДОБАВИТЬ: Очищаем LiveStatus
+                    HydraTorrent.LiveStatus.Remove(item.GameId.Value);
+
+                    // ✅ ДОБАВИТЬ: Добавляем хеш в RemovedHashesManager
+                    if (!string.IsNullOrEmpty(item.TorrentHash))
+                    {
+                        var removedHashesMgr = _plugin.GetCompletedManager()?.GetRemovedHashesManager();
+                        if (removedHashesMgr != null)
+                        {
+                            removedHashesMgr.AddRemovedHash(item.TorrentHash);
+                        }
+                    }
+
+                    // Удаляем торрент из qBittorrent (файлы сохраняются)
                     if (!string.IsNullOrEmpty(torrentData?.TorrentHash))
                     {
                         try
@@ -315,16 +360,7 @@ namespace HydraTorrent.Views
                         }
                     }
 
-                    // Удаляем hydra data файл
-                    var hydraDataPath = System.IO.Path.Combine(
-                        _plugin.GetPluginUserDataPath(),
-                        "HydraTorrents",
-                        $"{item.GameId.Value}.json");
-
-                    if (System.IO.File.Exists(hydraDataPath))
-                    {
-                        System.IO.File.Delete(hydraDataPath);
-                    }
+                    // JSON файл НЕ удаляем - чтобы можно было скачать игру повторно
 
                     // Обновляем UI
                     UpdateQueueUI();
@@ -443,6 +479,8 @@ namespace HydraTorrent.Views
         {
             if (_statisticsManager == null) return;
 
+            _statisticsManager.Load();
+
             Dispatcher.Invoke(() =>
             {
                 var stats = _statisticsManager.Statistics;
@@ -531,6 +569,58 @@ namespace HydraTorrent.Views
             {
                 _statisticsManager?.Reset();
                 UpdateStatisticsUI();
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Обработка переключения вкладок Queue/Completed
+        // ────────────────────────────────────────────────────────────────
+
+        private void QueueTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.Source is TabControl tabControl)
+            {
+                var selectedTab = tabControl.SelectedItem as TabItem;
+
+                if (selectedTab == null) return;
+
+                HydraTorrent.logger.Debug($"[Tab] Переключение на: {selectedTab.Name}");
+
+                if (selectedTab == tabCompleted)
+                {
+                    HydraTorrent.logger.Debug("[Tab] Обновление CompletedUI");
+                    UpdateCompletedUI();
+                }
+                else if (selectedTab == tabQueue)
+                {
+                    UpdateQueueUI();
+                }
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Обработка переключения главных вкладок
+        // ────────────────────────────────────────────────────────────────
+
+        private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.Source is TabControl tabControl)
+            {
+                var selectedTab = tabControl.SelectedItem as TabItem;
+                if (selectedTab == null) return;
+
+                // Переключение на вкладку "Статистика"
+                if (selectedTab == tabStatistics)
+                {
+                    _statisticsManager?.Load();  // <-- ДОБАВИТЬ ЭТУ СТРОКУ!
+                    UpdateStatisticsUI();
+                }
+                
+                // Переключение на вкладку "Завершённые"
+                if (selectedTab == tabCompleted)
+                {
+                    UpdateCompletedUI();
+                }
             }
         }
 
@@ -1766,7 +1856,7 @@ namespace HydraTorrent.Views
                                               .Trim();
                     PlayniteApi.Database.Games.Update(game);
                     txtStatus.Text = ResourceProvider.GetString("LOC_HydraTorrent_TorrentDeletedGameKept");
-                    HydraTorrent.logger.Info($"Торрент удалён, игра и данные сохранены: {game.Name}");
+                    HydraTorrent.logger.Info($"Торрент удалён, данные в библиотеке сохранены: {game.Name}");
 
                     PlayniteApi.Notifications.Add(new NotificationMessage(
                         "Hydra",
