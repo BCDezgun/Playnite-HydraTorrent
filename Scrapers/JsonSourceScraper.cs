@@ -1,4 +1,5 @@
 ﻿using HydraTorrent.Models;
+using HydraTorrent.Services;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -14,36 +15,83 @@ namespace HydraTorrent.Scrapers
         private readonly string _sourceName;
         private List<HydraRepack> _repackList = new List<HydraRepack>();
         private bool _isLoaded = false;
+        private DateTime _lastLoadTime = DateTime.MinValue;
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromHours(1);
 
         public JsonSourceScraper(string sourceName, string sourceUrl)
         {
             _sourceName = sourceName;
             _sourceUrl = sourceUrl;
-            System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Скрейпер инициализирован");
+            System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Scraper initialized");
         }
 
         private async Task LoadDataAsync(HttpClient client)
         {
-            if (_isLoaded) return;
+            // Проверяем кэш
+            if (_isLoaded && DateTime.Now - _lastLoadTime < _cacheDuration)
+            {
+                return;
+            }
 
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Загрузка базы данных...");
-                var json = await client.GetStringAsync(_sourceUrl);
+                System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Loading database...");
 
-                // Используем общую модель FitGirlRoot для всех JSON источников
-                var root = JsonConvert.DeserializeObject<FitGirlRoot>(json);
-
-                if (root?.Downloads != null)
+                // Сначала пробуем загрузить напрямую
+                try
                 {
-                    _repackList = root.Downloads;
-                    _isLoaded = true;
-                    System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Готово. Загружено репаков: {_repackList.Count}");
+                    var json = await client.GetStringAsync(_sourceUrl);
+                    var root = JsonConvert.DeserializeObject<FitGirlRoot>(json);
+
+                    if (root?.Downloads != null)
+                    {
+                        _repackList = root.Downloads;
+                        _isLoaded = true;
+                        _lastLoadTime = DateTime.Now;
+                        System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Loaded directly: {_repackList.Count} repacks");
+                        HydraTorrent.logger.Info($"[{_sourceName}] Loaded directly: {_repackList.Count} repacks");
+                        return;
+                    }
                 }
+                catch (HttpRequestException ex) when (ex.Message.Contains("403"))
+                {
+                    // Cloudflare блокирует - используем WebView2
+                    System.Diagnostics.Debug.WriteLine($"[{_sourceName}] HTTP 403, trying WebView2...");
+                    HydraTorrent.logger.Info($"[{_sourceName}] HTTP 403, trying WebView2...");
+                }
+                catch (HttpRequestException)
+                {
+                    // Другие HTTP ошибки - пробуем WebView2
+                    System.Diagnostics.Debug.WriteLine($"[{_sourceName}] HTTP error, trying WebView2...");
+                }
+
+                // Fallback на WebView2
+                if (CloudflareBypassService.IsWebView2Available())
+                {
+                    var cfService = CloudflareBypassService.Instance;
+                    var rootCf = await cfService.FetchJsonAsync<FitGirlRoot>(_sourceUrl);
+
+                    if (rootCf?.Downloads != null)
+                    {
+                        _repackList = rootCf.Downloads;
+                        _isLoaded = true;
+                        _lastLoadTime = DateTime.Now;
+                        System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Loaded via WebView2: {_repackList.Count} repacks");
+                        HydraTorrent.logger.Info($"[{_sourceName}] Loaded via WebView2: {_repackList.Count} repacks");
+                        return;
+                    }
+                }
+                else
+                {
+                    HydraTorrent.logger.Warn($"[{_sourceName}] WebView2 not available, cannot bypass Cloudflare");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Failed to load");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Ошибка сети при загрузке JSON: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[{_sourceName}] Error: {ex.Message}");
+                HydraTorrent.logger.Error(ex, $"[{_sourceName}] Error loading data");
             }
         }
 

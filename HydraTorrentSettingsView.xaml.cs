@@ -1,13 +1,15 @@
-﻿using Playnite.SDK;
+﻿using HydraTorrent.Models;
+using HydraTorrent.Services;
+using Newtonsoft.Json.Linq;
+using Playnite.SDK;
+using QBittorrent.Client;
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using QBittorrent.Client;
-using System;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Net.Http;
-using Newtonsoft.Json.Linq;
 
 namespace HydraTorrent
 {
@@ -27,6 +29,7 @@ namespace HydraTorrent
 
             txtPassword.Password = viewModel.Settings.QBittorrentPassword ?? "";
             LoadSources();
+            CheckWebView2Status();
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -235,17 +238,58 @@ namespace HydraTorrent
 
                     try
                     {
+                        // Сначала пробуем загрузить напрямую
                         using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
                         {
-                            var json = await client.GetStringAsync(url);
-                            var data = JObject.Parse(json);
-                            string name = data["name"]?.ToString() ?? "OK";
-                            _nameBlock.Text = name;
-                            _entry.Name = name;
+                            try
+                            {
+                                var json = await client.GetStringAsync(url);
+                                var data = JObject.Parse(json);
+                                string name = data["name"]?.ToString() ?? "OK";
+                                _nameBlock.Text = name;
+                                _entry.Name = name;
+                                return;
+                            }
+                            catch (HttpRequestException ex) when (ex.Message.Contains("403"))
+                            {
+                                // Cloudflare блокирует - пробуем WebView2
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                // Таймаут - пробуем WebView2
+                            }
                         }
+
+                        // Fallback на WebView2
+                        if (CloudflareBypassService.IsWebView2Available())
+                        {
+                            _nameBlock.Text = "⏳🔄";
+
+                            try
+                            {
+                                var cfService = CloudflareBypassService.Instance;
+                                var result = await cfService.FetchJsonAsync<FitGirlRoot>(url);
+
+                                if (result != null)
+                                {
+                                    string name = result.Name ?? "OK";
+                                    _nameBlock.Text = name;
+                                    _entry.Name = name;
+                                    return;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Settings] WebView2 error: {ex.Message}");
+                            }
+                        }
+
+                        _nameBlock.Text = "⚠️";
+                        _entry.Name = "";
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        System.Diagnostics.Debug.WriteLine($"[Settings] Error loading source: {ex.Message}");
                         _nameBlock.Text = "⚠️";
                         _entry.Name = "";
                     }
@@ -256,6 +300,70 @@ namespace HydraTorrent
             {
                 _entry.Url = _urlBox.Text.Trim();
                 return _entry;
+            }
+        }
+        private void CheckWebView2Status()
+        {
+            WebView2StatusPanel.Children.Clear();
+
+            var version = CloudflareBypassService.GetWebView2Version();
+
+            if (version != null)
+            {
+                var statusText = new TextBlock
+                {
+                    Text = $"✅ WebView2 Runtime: v{version}",
+                    Foreground = System.Windows.Media.Brushes.SpringGreen,
+                    Margin = new Thickness(0, 0, 0, 5)
+                };
+                WebView2StatusPanel.Children.Add(statusText);
+
+                var descText = new TextBlock
+                {
+                    Text = ResourceProvider.GetString("LOC_HydraTorrent_WebView2Available"),
+                    FontSize = 11,
+                    Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88)),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                WebView2StatusPanel.Children.Add(descText);
+            }
+            else
+            {
+                var statusText = new TextBlock
+                {
+                    Text = "⚠️ WebView2 Runtime " + ResourceProvider.GetString("LOC_HydraTorrent_WebView2NotFound"),
+                    Foreground = System.Windows.Media.Brushes.Orange,
+                    Margin = new Thickness(0, 0, 0, 5)
+                };
+                WebView2StatusPanel.Children.Add(statusText);
+
+                var descText = new TextBlock
+                {
+                    Text = ResourceProvider.GetString("LOC_HydraTorrent_WebView2RequiredDesc"),
+                    FontSize = 11,
+                    Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88)),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 10)
+                };
+                WebView2StatusPanel.Children.Add(descText);
+
+                var downloadBtn = new Button
+                {
+                    Content = ResourceProvider.GetString("LOC_HydraTorrent_WebView2Download"),
+                    Padding = new Thickness(15, 5, 15, 5),
+                    HorizontalAlignment = HorizontalAlignment.Left
+                };
+                downloadBtn.Click += (s, e) =>
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://developer.microsoft.com/en-us/microsoft-edge/webview2/",
+                        UseShellExecute = true
+                    });
+                };
+                WebView2StatusPanel.Children.Add(downloadBtn);
             }
         }
     }

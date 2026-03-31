@@ -276,4 +276,13 @@
     <sys:String x:Key="LOC_HydraTorrent_ClearCompletedList">Clear Completed List</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ConfirmClearCompleted">Clear all completed downloads?&#x0a;All torrents will be removed from qBittorrent, but downloaded files will be preserved.</sys:String>
 
+    <!-- ═══════════════════════════════════════════════════════════════════
+     CLOUDFLARE BYPASS
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_CloudflareBypass">Cloudflare Bypass</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_WebView2Available">Sources with Cloudflare protection will load automatically</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_WebView2NotFound">not found</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_WebView2RequiredDesc">Sources with Cloudflare protection cannot be loaded. Please install Microsoft WebView2 Runtime.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_WebView2Download">Download WebView2 Runtime</sys:String>
+
 </ResourceDictionary>

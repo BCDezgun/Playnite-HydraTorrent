@@ -660,6 +660,31 @@ namespace HydraTorrent
             _statisticsManager = new StatisticsManager(GetPluginUserDataPath(), _completedManager);
             _statisticsManager.Load();
 
+            // ✅ Инициализация WebView2 для обхода Cloudflare (на UI потоке!)
+            _ = Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                await Task.Delay(2000); // Ждём 2 сек пока Playnite полностью загрузится
+                try
+                {
+                    if (CloudflareBypassService.IsWebView2Available())
+                    {
+                        logger.Info($"WebView2 Runtime available: {CloudflareBypassService.GetWebView2Version()}");
+
+                        // Предварительная инициализация
+                        await CloudflareBypassService.Instance.InitializeAsync();
+                        logger.Info("CloudflareBypassService initialized");
+                    }
+                    else
+                    {
+                        logger.Warn("WebView2 Runtime not found. Cloudflare bypass will not be available.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, "Failed to initialize WebView2");
+                }
+            });
+
             // ✅ Восстанавливаем состояния после перезапуска
             _ = RestoreQueueStateAsync();
         }

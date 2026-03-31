@@ -147,6 +147,16 @@
                        FontSize="12" 
                        Foreground="#888" 
                        TextWrapping="Wrap"/>
+            <Separator Margin="0,15,0,10"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_CloudflareBypass}"
+                        FontWeight="Bold" 
+                        FontSize="16" 
+                        Margin="0,0,0,10"/>
+
+            <StackPanel x:Name="WebView2StatusPanel" Margin="0,0,0,10">
+                <!-- Заполняется в code-behind -->
+            </StackPanel>
 
         </StackPanel>
     </ScrollViewer>
