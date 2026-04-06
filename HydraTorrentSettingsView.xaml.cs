@@ -54,11 +54,20 @@ namespace HydraTorrent
             }
         }
 
+        private void SteamGridDbLink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = e.Uri.AbsoluteUri,
+                UseShellExecute = true
+            });
+            e.Handled = true;
+        }
+
         private async void TestConnection_Click(object sender, RoutedEventArgs e)
         {
             var settings = viewModel.Settings;
 
-            // Проверка активности qBittorrent
             if (!settings.UseQbittorrent)
             {
                 API.Instance.Dialogs.ShowMessage(
@@ -68,6 +77,8 @@ namespace HydraTorrent
             }
 
             string password = txtPassword.Password ?? "";
+            HydraTorrent.logger.Info($"[TestConnection] Host: {settings.QBittorrentHost}, Port: {settings.QBittorrentPort}, User: {settings.QBittorrentUsername}, Password length: {password.Length}");
+
             var url = new Uri($"http://{settings.QBittorrentHost}:{settings.QBittorrentPort}");
             var client = new QBittorrentClient(url);
 
@@ -76,16 +87,15 @@ namespace HydraTorrent
                 await client.LoginAsync(settings.QBittorrentUsername, password);
                 var version = await client.GetApiVersionAsync();
 
-                // Успешное сообщение
                 API.Instance.Dialogs.ShowMessage(
                     string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConnectionSuccess"), version),
                     ResourceProvider.GetString("LOC_HydraTorrent_Success"));
             }
             catch (Exception ex)
             {
-                // Ошибка
-                API.Instance.Dialogs.ShowMessage(
-                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ConnectionError"), ex.Message),
+                HydraTorrent.logger.Error(ex, "[TestConnection] Ошибка подключения");
+                API.Instance.Dialogs.ShowErrorMessage(
+                    $"Type: {ex.GetType().Name}\nMessage: {ex.Message}\n\nInner: {ex.InnerException?.Message}",
                     ResourceProvider.GetString("LOC_HydraTorrent_ConnectionErrorTitle"));
             }
         }

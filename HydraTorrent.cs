@@ -1,4 +1,4 @@
-﻿using HydraTorrent.Models;
+using HydraTorrent.Models;
 using HydraTorrent.Scrapers;
 using HydraTorrent.Services;
 using HydraTorrent.Views;
@@ -14,17 +14,19 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Reflection;
 
 namespace HydraTorrent
 {
     public class HydraTorrent : LibraryPlugin
     {
-        private ScraperService _scraperService;
         public static readonly ILogger logger = LogManager.GetLogger();
+        public static HydraTorrent Instance { get; private set; }
         private HydraTorrentSettingsViewModel settings { get; set; }
 
         public override Guid Id { get; } = Guid.Parse("c2177dc7-8179-4098-8b6c-d683ce415279");
@@ -32,15 +34,18 @@ namespace HydraTorrent
         public override LibraryClient Client { get; } = new HydraTorrentClient();
 
         private const string TorrentDataFolder = "HydraTorrents";
-        private TorrentMonitor _monitor;
 
-        private CompletedManager _completedManager;
-        private StatisticsManager _statisticsManager;
+        private ServiceContainer _services;
+        private ScraperService _scraperService;
+        private QBittorrentClientFactory _clientFactory;
+        private TorrentMonitor _monitor;
+        private Playnite_HydraTorrent.Views.DownloadProgressView downloadProgressView;
 
         public static Dictionary<Guid, TorrentStatusInfo> LiveStatus = new Dictionary<Guid, TorrentStatusInfo>();
 
-        public CompletedManager GetCompletedManager() => _completedManager;
-        public StatisticsManager GetStatisticsManager() => _statisticsManager;
+        public CompletedManager GetCompletedManager() => _services.Resolve<ICompletedManager>() as CompletedManager;
+        public StatisticsManager GetStatisticsManager() => _services.Resolve<IStatisticsManager>() as StatisticsManager;
+        public QBittorrentClientFactory GetClientFactory() => _clientFactory;
 
         // ────────────────────────────────────────────────────────────────
         // Очередь загрузок
@@ -48,6 +53,7 @@ namespace HydraTorrent
 
         private const string QueueFileName = "queue.json";
         public List<TorrentResult> DownloadQueue { get; set; } = new List<TorrentResult>();
+        private readonly SemaphoreSlim _queueLock = new SemaphoreSlim(1, 1);
 
         public class TorrentStatusInfo
         {
@@ -64,10 +70,80 @@ namespace HydraTorrent
 
         public HydraTorrent(IPlayniteAPI api) : base(api)
         {
+            Instance = this;
+            
+            // Подписываемся на загрузку сборок из ресурсов
+            AppDomain.CurrentDomain.AssemblyResolve += ResolveAssembly;
+            
             settings = new HydraTorrentSettingsViewModel(this);
+            _clientFactory = new QBittorrentClientFactory(settings.Settings);
             _scraperService = new ScraperService(settings.Settings);
-            Properties = new LibraryPluginProperties { HasSettings = true };
+
+            _services = new ServiceContainer();
+            _services.RegisterInstance(_clientFactory);
+            _services.RegisterInstance<HydraTorrent>(this);
+            _services.RegisterInstance<IPlayniteAPI>(api);
+
+            _services.Register<ICompletedManager>(() =>
+            {
+                var cm = new CompletedManager(this);
+                cm.LoadCompletedItems();
+                return cm;
+            });
+
+            _services.Register<IStatisticsManager>(() =>
+            {
+                var sm = new StatisticsManager(GetPluginUserDataPath(), GetCompletedManager());
+                sm.Load();
+                return sm;
+            });
+
+            _services.Register<IGameSetupService>(() => new GameSetupService(this));
+
             _monitor = new TorrentMonitor(api, this);
+
+            Properties = new LibraryPluginProperties { HasSettings = true };
+
+            AddCustomElementSupport(new AddCustomElementSupportArgs
+            {
+                ElementList = new List<string> { "DownloadProgressControl" },
+                SourceName = "HydraTorrent"
+            });
+        }
+
+        public T Resolve<T>() => _services.Resolve<T>();
+
+        // ────────────────────────────────────────────────────────────────
+        // Assembly Resolver (Загрузка DLL из ресурсов)
+        // ────────────────────────────────────────────────────────────────
+
+        private Assembly ResolveAssembly(object sender, ResolveEventArgs args)
+        {
+            var assemblyName = new AssemblyName(args.Name).Name;
+            
+            // Определяем имя ресурса по имени запрашиваемой сборки
+            string resourceName = null;
+            
+            if (assemblyName == "DiscordRPC")
+                resourceName = "HydraTorrent.DiscordRPC.dll";
+            else if (assemblyName == "QBittorrent.Client")
+                resourceName = "HydraTorrent.QBittorrent.Client.dll";
+            else if (assemblyName == "Newtonsoft.Json")
+                resourceName = "HydraTorrent.Newtonsoft.Json.dll";
+            
+            if (string.IsNullOrEmpty(resourceName))
+                return null;
+
+            // Загружаем сборку из ресурсов
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                    return null;
+                    
+                byte[] bytes = new byte[stream.Length];
+                stream.Read(bytes, 0, bytes.Length);
+                return Assembly.Load(bytes);
+            }
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -119,7 +195,7 @@ namespace HydraTorrent
 
         // ────────────────────────────────────────────────────────────────
         // Хранение очереди загрузок
-        // ────────────────────────────────────────────────────────────────       
+        // ────────────────────────────────────────────────────────────────
 
         private string GetQueueFilePath()
         {
@@ -171,117 +247,112 @@ namespace HydraTorrent
 
         public async Task StartNextInQueueAsync()
         {
-            // ✅ СНАЧАЛА пересчитываем позиции по текущему порядку списка!
-            RecalculateQueuePositions();
-
-            // ────────────────────────────────────────────────────────────────
-            // ✅ ПРИОРИТЕТ 1: Ищем игру со статусом "Paused" (была активна)
-            // ────────────────────────────────────────────────────────────────
-            var pausedGame = DownloadQueue
-                .FirstOrDefault(q => q.QueueStatus == "Paused");
-
-            if (pausedGame != null && pausedGame.GameId.HasValue)
+            await _queueLock.WaitAsync();
+            try
             {
-                logger.Info($"Найдена игра на паузе: {pausedGame.Name} — возобновляем");
+                RecalculateQueuePositions();
 
-                pausedGame.QueueStatus = "Downloading";
-                SaveQueue();
+                // ПРИОРИТЕТ 1: Ищем игру со статусом "Paused" (была активна)
+                var pausedGame = DownloadQueue
+                    .FirstOrDefault(q => q.QueueStatus == "Paused");
 
-                // Возобновляем торрент в qBittorrent
-                var qb = settings.Settings;
-                var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
-                using (var client = new QBittorrentClient(url))
+                if (pausedGame != null && pausedGame.GameId.HasValue)
                 {
-                    await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
-                    await client.ResumeAsync(pausedGame.TorrentHash);
-                }
+                    logger.Info($"Найдена игра на паузе: {pausedGame.Name} — возобновляем");
 
-                // Обновляем игру в БД
-                var game = PlayniteApi.Database.Games.Get(pausedGame.GameId.Value);
-                if (game != null)
-                {
-                    game.IsInstalling = true;
+                    pausedGame.QueueStatus = "Downloading";
+                    SaveQueue();
 
-                    if (string.IsNullOrEmpty(pausedGame.GameName))
+                    var qb = settings.Settings;
+                    var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+                    using (var client = new QBittorrentClient(url))
                     {
-                        pausedGame.GameName = game.Name;
-                        SaveQueue();
+                        await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+                        await client.ResumeAsync(pausedGame.TorrentHash);
                     }
 
-                    PlayniteApi.Database.Games.Update(game);
+                    var game = PlayniteApi.Database.Games.Get(pausedGame.GameId.Value);
+                    if (game != null)
+                    {
+                        game.IsInstalling = true;
+                        if (string.IsNullOrEmpty(pausedGame.GameName))
+                        {
+                            pausedGame.GameName = game.Name;
+                            SaveQueue();
+                        }
+                        PlayniteApi.Database.Games.Update(game);
+                    }
+
+                    PlayniteApi.Notifications.Add(new NotificationMessage(
+                        "HydraTorrent",
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ResumedDownload"), pausedGame.Name),
+                        NotificationType.Info));
+
+                    if (HydraHubView.CurrentInstance != null)
+                    {
+                        HydraHubView.CurrentInstance.RefreshQueueUI();
+                    }
+
+                    return;
+                }
+
+                // ПРИОРИТЕТ 2: Если нет paused, ищем следующую "Queued"
+                var nextQueued = DownloadQueue
+                    .Where(q => q.QueueStatus == "Queued")
+                    .OrderBy(q => q.QueuePosition)
+                    .FirstOrDefault();
+
+                if (nextQueued == null)
+                {
+                    logger.Info("Очередь пуста, нечего запускать");
+                    return;
+                }
+
+                if (!nextQueued.GameId.HasValue)
+                {
+                    logger.Warn($"Игра в очереди без GameId: {nextQueued.Name}");
+                    return;
+                }
+
+                logger.Info($"Авто-старт из очереди: {nextQueued.Name} (позиция {nextQueued.QueuePosition})");
+
+                nextQueued.QueueStatus = "Downloading";
+                RecalculateQueuePositions();
+                SaveQueue();
+
+                var qb2 = settings.Settings;
+                var url2 = new Uri($"http://{qb2.QBittorrentHost}:{qb2.QBittorrentPort}");
+                using (var client2 = new QBittorrentClient(url2))
+                {
+                    await client2.LoginAsync(qb2.QBittorrentUsername, qb2.QBittorrentPassword ?? "");
+                    await client2.ResumeAsync(nextQueued.TorrentHash);
+                }
+
+                var game2 = PlayniteApi.Database.Games.Get(nextQueued.GameId.Value);
+                if (game2 != null)
+                {
+                    game2.IsInstalling = true;
+                    if (string.IsNullOrEmpty(nextQueued.GameName))
+                    {
+                        nextQueued.GameName = game2.Name;
+                        SaveQueue();
+                    }
+                    PlayniteApi.Database.Games.Update(game2);
                 }
 
                 PlayniteApi.Notifications.Add(new NotificationMessage(
                     "HydraTorrent",
-                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_ResumedDownload"), pausedGame.Name),
+                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadStarted"), nextQueued.Name),
                     NotificationType.Info));
 
                 if (HydraHubView.CurrentInstance != null)
                 {
                     HydraHubView.CurrentInstance.RefreshQueueUI();
                 }
-
-                return; // ✅ Возвращаем — нашли игру!
             }
-
-            // ────────────────────────────────────────────────────────────────
-            // ✅ ПРИОРИТЕТ 2: Если нет paused, ищем следующую "Queued"
-            // ────────────────────────────────────────────────────────────────
-            var nextQueued = DownloadQueue
-                .Where(q => q.QueueStatus == "Queued")
-                .OrderBy(q => q.QueuePosition)
-                .FirstOrDefault();
-
-            if (nextQueued == null)
+            finally
             {
-                logger.Info("Очередь пуста, нечего запускать");
-                return;
-            }
-
-            if (!nextQueued.GameId.HasValue)
-            {
-                logger.Warn($"Игра в очереди без GameId: {nextQueued.Name}");
-                return;
-            }
-
-            logger.Info($"Авто-старт из очереди: {nextQueued.Name} (позиция {nextQueued.QueuePosition})");
-
-            nextQueued.QueueStatus = "Downloading";
-            RecalculateQueuePositions();
-            SaveQueue();
-
-            // Возобновляем торрент в qBittorrent
-            var qb2 = settings.Settings;
-            var url2 = new Uri($"http://{qb2.QBittorrentHost}:{qb2.QBittorrentPort}");
-            using (var client2 = new QBittorrentClient(url2))
-            {
-                await client2.LoginAsync(qb2.QBittorrentUsername, qb2.QBittorrentPassword ?? "");
-                await client2.ResumeAsync(nextQueued.TorrentHash);
-            }
-
-            // Обновляем игру в БД
-            var game2 = PlayniteApi.Database.Games.Get(nextQueued.GameId.Value);
-            if (game2 != null)
-            {
-                game2.IsInstalling = true;
-
-                if (string.IsNullOrEmpty(nextQueued.GameName))
-                {
-                    nextQueued.GameName = game2.Name;
-                    SaveQueue();
-                }
-
-                PlayniteApi.Database.Games.Update(game2);
-            }
-
-            PlayniteApi.Notifications.Add(new NotificationMessage(
-                "HydraTorrent",
-                string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadStarted"), nextQueued.Name),
-                NotificationType.Info));
-
-            if (HydraHubView.CurrentInstance != null)
-            {
-                HydraHubView.CurrentInstance.RefreshQueueUI();
+                _queueLock.Release();
             }
         }
 
@@ -289,16 +360,15 @@ namespace HydraTorrent
         {
             int pos = 0;
 
-            // ✅ ВАЖНО: Итерируемся по фактическому порядку в списке, НЕ сортируем!
             foreach (var item in DownloadQueue)
             {
                 if (item.QueueStatus == "Downloading")
                 {
-                    item.QueuePosition = 0;  // Активная загрузка всегда первая
+                    item.QueuePosition = 0;
                 }
                 else if (item.QueueStatus == "Queued" || item.QueueStatus == "Paused")
                 {
-                    item.QueuePosition = ++pos;  // Остальные по порядку в списке
+                    item.QueuePosition = ++pos;
                 }
             }
 
@@ -321,147 +391,152 @@ namespace HydraTorrent
             }
         }
 
-        public async void InstallGame(Game game, TorrentResult torrentData)
+        public async void InstallGame(Game game, TorrentResult torrentData, Action<bool> onResult = null)
         {
-            if (game == null || torrentData == null || string.IsNullOrEmpty(torrentData.Magnet)) return;
-
-            // ✅ ПРОВЕРКА НА ДУБЛИКАТЫ
-            var existingInQueue = DownloadQueue.FirstOrDefault(q => q.GameId == game.Id);
-            if (existingInQueue != null)
-            {
-                string statusText = existingInQueue.QueueStatus switch
-                {
-                    "Downloading" => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Downloading"),
-                    "Queued" => string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Queued"), existingInQueue.QueuePosition),
-                    "Completed" => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Completed"),
-                    _ => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Generic")
-                };
-
-                PlayniteApi.Dialogs.ShowMessage(statusText, ResourceProvider.GetString("LOC_HydraTorrent_Attention"));
-                logger.Warn($"Попытка добавить дубликат: {game.Name}");
-                return;
-            }
-
-            var activeDownload = GetActiveDownload();
-            var hash = ExtractHashFromMagnet(torrentData.Magnet);
-
-            if (string.IsNullOrEmpty(hash))
-            {
-                PlayniteApi.Dialogs.ShowErrorMessage(
-                    ResourceProvider.GetString("LOC_HydraTorrent_FailedExtractHash"),
-                    ResourceProvider.GetString("LOC_HydraTorrent_Error"));
-                return;
-            }
-
-            torrentData.TorrentHash = hash;
-            var removedHashesMgr = _completedManager?.GetRemovedHashesManager();
-            if (removedHashesMgr != null && removedHashesMgr.IsRemoved(hash))
-            {
-                removedHashesMgr.RemoveRemovedHash(hash);
-                logger.Info($"Хеш очищен из RemovedHashesManager для повторной загрузки: {hash}");
-            }
-            torrentData.GameId = game.Id;
-            torrentData.AddedToQueueAt = DateTime.Now;
-            torrentData.GameName = game.Name;
-
-            var qb = settings.Settings;
-            string finalPath = (qb.UseDefaultDownloadPath == false || string.IsNullOrEmpty(qb.DefaultDownloadPath))
-                ? ShowCustomInstallPathDialog(game.Name)
-                : qb.DefaultDownloadPath;
-
-            if (string.IsNullOrEmpty(finalPath))
-            {
-                logger.Warn($"Путь установки не выбран для: {game.Name}");
-                return;
-            }
-
-            // ✅ Сохраняем путь загрузки
-            torrentData.DownloadPath = finalPath;
-            logger.Info($"[DEBUG] DownloadPath сохранён: {finalPath}");
-
+            await _queueLock.WaitAsync();
             try
             {
-                var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
-                using (var client = new QBittorrentClient(url))
+                if (game == null || torrentData == null || string.IsNullOrEmpty(torrentData.Magnet)) return;
+
+                var existingInQueue = DownloadQueue.FirstOrDefault(q => q.GameId == game.Id);
+                if (existingInQueue != null)
                 {
-                    await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
-
-                    // ✅ ОТПРАВЛЯЕМ В QBITTORRENT ВСЕГДА
-                    // Если есть активная загрузка — добавляем на паузе
-                    bool shouldBePaused = activeDownload != null;
-
-                    var request = new AddTorrentsRequest
+                    string statusText = existingInQueue.QueueStatus switch
                     {
-                        Paused = shouldBePaused,
-                        DownloadFolder = finalPath
+                        "Downloading" => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Downloading"),
+                        "Queued" => string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Queued"), existingInQueue.QueuePosition),
+                        "Completed" => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Completed"),
+                        _ => ResourceProvider.GetString("LOC_HydraTorrent_DuplicateWarning_Generic")
                     };
-                    request.TorrentUrls.Add(new Uri(torrentData.Magnet));
-                    await client.AddTorrentsAsync(request);
 
-                    await Task.Delay(2000);
+                    PlayniteApi.Dialogs.ShowMessage(statusText, ResourceProvider.GetString("LOC_HydraTorrent_Attention"));
+                    logger.Warn($"Попытка добавить дубликат: {game.Name}");
+                    return;
+                }
 
-                    if (shouldBePaused)
+                var activeDownload = GetActiveDownload();
+                var hash = ExtractHashFromMagnet(torrentData.Magnet);
+
+                if (string.IsNullOrEmpty(hash))
+                {
+                    PlayniteApi.Dialogs.ShowErrorMessage(
+                        ResourceProvider.GetString("LOC_HydraTorrent_FailedExtractHash"),
+                        ResourceProvider.GetString("LOC_HydraTorrent_Error"));
+                    return;
+                }
+
+                torrentData.TorrentHash = hash;
+                var completedMgr = Resolve<ICompletedManager>();
+                var removedHashesMgr = completedMgr?.GetRemovedHashesManager();
+                if (removedHashesMgr != null && removedHashesMgr.IsRemoved(hash))
+                {
+                    removedHashesMgr.RemoveRemovedHash(hash);
+                    logger.Info($"Хеш очищен из RemovedHashesManager для повторной загрузки: {hash}");
+                }
+                torrentData.GameId = game.Id;
+                torrentData.AddedToQueueAt = DateTime.Now;
+                torrentData.GameName = game.Name;
+
+                var qb = settings.Settings;
+                string finalPath = (qb.UseDefaultDownloadPath == false || string.IsNullOrEmpty(qb.DefaultDownloadPath))
+                    ? ShowCustomInstallPathDialog(game.Name)
+                    : qb.DefaultDownloadPath;
+
+                if (string.IsNullOrEmpty(finalPath))
+                {
+                    logger.Warn($"Путь установки не выбран для: {game.Name}");
+                    return;
+                }
+
+                torrentData.DownloadPath = finalPath;
+                logger.Info($"[DEBUG] DownloadPath сохранён: {finalPath}");
+
+                try
+                {
+                    var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+                    using (var client = new QBittorrentClient(url))
                     {
-                        // ✅ ДОБАВЛЯЕМ В ОЧЕРЕДЬ
-                        torrentData.QueueStatus = "Queued";
-                        DownloadQueue.Add(torrentData);
-                        RecalculateQueuePositions();
-                        SaveQueue();
-                        SaveHydraData(game, torrentData);
-                        logger.Info($"[DEBUG] Очередь и данные сохранены");
+                        await client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
 
-                        int position = torrentData.QueuePosition;
+                        bool shouldBePaused = activeDownload != null;
 
-                        PlayniteApi.Notifications.Add(new NotificationMessage(
-                            "HydraTorrent",
-                            string.Format(ResourceProvider.GetString("LOC_HydraTorrent_AddedToQueue"), game.Name, position),
-                            NotificationType.Info));
-
-                        logger.Info($"Добавлено в очередь: {game.Name} (позиция {position})");
-                        _ = Task.Run(async () =>
+                        var request = new AddTorrentsRequest
                         {
-                            await Task.Delay(500); // ✅ Даём время на сохранение и обновление UI
-                            if (HydraHubView.CurrentInstance != null)
-                            {
-                                HydraHubView.CurrentInstance.RefreshQueueUI();
-                            }
-                        });
-                    }
-                    else
-                    {
-                        // ✅ ЗАПУСКАЕМ СРАЗУ
-                        torrentData.QueueStatus = "Downloading";
-                        torrentData.QueuePosition = 0;
-                        DownloadQueue.Add(torrentData);
-                        SaveQueue();
-                        SaveHydraData(game, torrentData);
+                            Paused = shouldBePaused,
+                            DownloadFolder = finalPath
+                        };
+                        request.TorrentUrls.Add(new Uri(torrentData.Magnet));
+                        await client.AddTorrentsAsync(request);
 
-                        PlayniteApi.Notifications.Add(new NotificationMessage(
-                            "HydraTorrent",
-                            string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadStarted"), game.Name),
-                            NotificationType.Info));
+                        await Task.Delay(2000);
 
-                        logger.Info($"Начата загрузка: {game.Name}");
-                        _ = Task.Run(async () =>
+                        if (shouldBePaused)
                         {
-                            await Task.Delay(500);
-                            if (HydraHubView.CurrentInstance != null)
-                            {
-                                HydraHubView.CurrentInstance.RefreshQueueUI();
-                            }
-                        });
-                    }
+                            torrentData.QueueStatus = "Queued";
+                            DownloadQueue.Add(torrentData);
+                            RecalculateQueuePositions();
+                            SaveQueue();
+                            SaveHydraData(game, torrentData);
+                            logger.Info($"[DEBUG] Очередь и данные сохранены");
 
-                    game.IsInstalling = true;
-                    PlayniteApi.Database.Games.Update(game);
+                            int position = torrentData.QueuePosition;
+
+                            PlayniteApi.Notifications.Add(new NotificationMessage(
+                                "HydraTorrent",
+                                string.Format(ResourceProvider.GetString("LOC_HydraTorrent_AddedToQueue"), game.Name, position),
+                                NotificationType.Info));
+
+                            logger.Info($"Добавлено в очередь: {game.Name} (позиция {position})");
+                            _ = Task.Run(async () =>
+                            {
+                                await Task.Delay(500);
+                                if (HydraHubView.CurrentInstance != null)
+                                {
+                                    HydraHubView.CurrentInstance.RefreshQueueUI();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            torrentData.QueueStatus = "Downloading";
+                            torrentData.QueuePosition = 0;
+                            DownloadQueue.Add(torrentData);
+                            SaveQueue();
+                            SaveHydraData(game, torrentData);
+
+                            PlayniteApi.Notifications.Add(new NotificationMessage(
+                                "HydraTorrent",
+                                string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadStarted"), game.Name),
+                                NotificationType.Info));
+
+                            logger.Info($"Начата загрузка: {game.Name}");
+                            _ = Task.Run(async () =>
+                            {
+                                await Task.Delay(500);
+                                if (HydraHubView.CurrentInstance != null)
+                                {
+                                    HydraHubView.CurrentInstance.RefreshQueueUI();
+                                }
+                            });
+                        }
+
+                        game.IsInstalling = true;
+                        PlayniteApi.Database.Games.Update(game);
+                        onResult?.Invoke(true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, "qBittorrent error");
+                    PlayniteApi.Dialogs.ShowErrorMessage(
+                        string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadError"), ex.Message),
+                        ResourceProvider.GetString("LOC_HydraTorrent_Error"));
+                    onResult?.Invoke(false);
                 }
             }
-            catch (Exception ex)
+            finally
             {
-                logger.Error(ex, "qBittorrent error");  // ← Логи можно на английском
-                PlayniteApi.Dialogs.ShowErrorMessage(
-                    string.Format(ResourceProvider.GetString("LOC_HydraTorrent_DownloadError"), ex.Message),
-                    ResourceProvider.GetString("LOC_HydraTorrent_Error"));
+                _queueLock.Release();
             }
         }
 
@@ -481,10 +556,11 @@ namespace HydraTorrent
 
         private string ExtractHashFromMagnet(string magnet)
         {
-            if (string.IsNullOrEmpty(magnet)) return null;
-
-            var match = Regex.Match(magnet, @"urn:btih:([a-fA-F0-9]{40})", RegexOptions.IgnoreCase);
-            return match.Success ? match.Groups[1].Value.ToLowerInvariant() : null;
+            if (MagnetLinkValidator.Validate(magnet, out var hash))
+            {
+                return hash;
+            }
+            return null;
         }
 
         private class HydraInstallController : InstallController
@@ -499,40 +575,43 @@ namespace HydraTorrent
                 _torrentData = torrentData;
             }
 
-            public override void Install(InstallActionArgs args)
+    public override void Install(InstallActionArgs args)
+    {
+        if (!string.IsNullOrEmpty(_torrentData.DownloadPath) &&
+            Directory.Exists(_torrentData.DownloadPath))
+        {
+            var setupPath = FindSetupExe(_torrentData.DownloadPath);
+            if (setupPath != null)
             {
-                // ✅ НОВОЕ: Проверяем, загружен ли уже торрент
-                if (!string.IsNullOrEmpty(_torrentData.DownloadPath) &&
-                    Directory.Exists(_torrentData.DownloadPath))
-                {
-                    // Торрент уже загружен - ищем setup.exe
-                    var setupPath = FindSetupExe(_torrentData.DownloadPath);
-                    if (setupPath != null)
-                    {
-                        // Запускаем setup.exe
-                        StartSetupExe(setupPath);
-                        return;
-                    }
-                }
-
-                // Торрент не загружен - начинаем загрузку
-                _plugin.InstallGame(Game, _torrentData);
-
-                _watcherTimer = new System.Timers.Timer(5000);
-                _watcherTimer.Elapsed += WatcherTimer_Elapsed;
-                _watcherTimer.Start();
+                StartSetupExe(setupPath);
+                return;
             }
+        }
+
+        bool installCompleted = false;
+        _plugin.InstallGame(Game, _torrentData, (success) =>
+        {
+            installCompleted = success;
+            if (!success)
+            {
+                Game.IsInstalling = false;
+                _plugin.PlayniteApi.Database.Games.Update(Game);
+            }
+        });
+
+        _watcherTimer = new System.Timers.Timer(5000);
+        _watcherTimer.Elapsed += WatcherTimer_Elapsed;
+        _watcherTimer.Start();
+    }
 
             private string FindSetupExe(string downloadPath)
             {
                 try
                 {
-                    // Ищем setup.exe в корне
                     var rootSetup = Path.Combine(downloadPath, "setup.exe");
                     if (File.Exists(rootSetup))
                         return rootSetup;
 
-                    // Ищем во вложенных папках (1 уровень)
                     foreach (var dir in Directory.GetDirectories(downloadPath))
                     {
                         var nestedSetup = Path.Combine(dir, "setup.exe");
@@ -557,11 +636,9 @@ namespace HydraTorrent
                         UseShellExecute = true
                     });
 
-                    // Игра начинает устанавливаться
                     Game.IsInstalling = true;
                     _plugin.PlayniteApi.Database.Games.Update(Game);
 
-                    // Запускаем мониторинг завершения установки
                     StartInstallationWatcher();
                 }
                 catch (Exception ex)
@@ -572,13 +649,9 @@ namespace HydraTorrent
 
             private void StartInstallationWatcher()
             {
-                // Следим за процессом установки
-                // Когда пользователь закончит установку, нужно обновить игру
                 _watcherTimer = new System.Timers.Timer(10000);
                 _watcherTimer.Elapsed += (s, e) =>
                 {
-                    // Здесь можно проверить, установлена ли игра
-                    // Например, поискать .exe в InstallDirectory
                     CheckInstallationComplete();
                 };
                 _watcherTimer.Start();
@@ -586,8 +659,6 @@ namespace HydraTorrent
 
             private void CheckInstallationComplete()
             {
-                // TODO: Определить, что установка завершена
-                // Например, если игра имеет InstallDirectory и там есть исполняемый файл
                 if (!string.IsNullOrEmpty(Game.InstallDirectory) &&
                     Directory.Exists(Game.InstallDirectory))
                 {
@@ -629,6 +700,23 @@ namespace HydraTorrent
         }
 
         // ────────────────────────────────────────────────────────────────
+        // Theme Integration - Download Progress Button
+        // ────────────────────────────────────────────────────────────────
+
+        public override Control GetGameViewControl(GetGameViewControlArgs args)
+        {
+            if (args.Name == "DownloadProgressControl")
+            {
+                if (downloadProgressView == null)
+                {
+                    downloadProgressView = new Playnite_HydraTorrent.Views.DownloadProgressView(this);
+                }
+                return downloadProgressView;
+            }
+            return null;
+        }
+
+        // ────────────────────────────────────────────────────────────────
         // Sidebar и жизненный цикл
         // ────────────────────────────────────────────────────────────────
 
@@ -640,7 +728,7 @@ namespace HydraTorrent
                 Type = SiderbarItemType.View,
                 Icon = new TextBlock
                 {
-                    Text = "🐙",
+                    Text = "🐉",
                     FontSize = 22,
                     FontFamily = ResourceProvider.GetResource("FontIcoFont") as FontFamily
                                  ?? new FontFamily("Segoe UI Emoji")
@@ -651,26 +739,26 @@ namespace HydraTorrent
 
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args)
         {
+            var migrated = DataMigration.Migrate(GetPluginUserDataPath());
+            if (migrated > 0)
+            {
+                logger.Info($"DataMigration: {migrated} file(s) migrated");
+            }
+
             _monitor.Start();
-            LoadQueue(); // ✅ Загружаем очередь при старте
+            LoadQueue();
 
-            _completedManager = new CompletedManager(this);
-            _completedManager.LoadCompletedItems();
+            _ = Resolve<ICompletedManager>();
+            _ = Resolve<IStatisticsManager>();
 
-            _statisticsManager = new StatisticsManager(GetPluginUserDataPath(), _completedManager);
-            _statisticsManager.Load();
-
-            // ✅ Инициализация WebView2 для обхода Cloudflare (на UI потоке!)
             _ = Application.Current.Dispatcher.InvokeAsync(async () =>
             {
-                await Task.Delay(2000); // Ждём 2 сек пока Playnite полностью загрузится
+                await Task.Delay(2000);
                 try
                 {
                     if (CloudflareBypassService.IsWebView2Available())
                     {
                         logger.Info($"WebView2 Runtime available: {CloudflareBypassService.GetWebView2Version()}");
-
-                        // Предварительная инициализация
                         await CloudflareBypassService.Instance.InitializeAsync();
                         logger.Info("CloudflareBypassService initialized");
                     }
@@ -685,13 +773,12 @@ namespace HydraTorrent
                 }
             });
 
-            // ✅ Восстанавливаем состояния после перезапуска
             _ = RestoreQueueStateAsync();
         }
 
         public async Task RestoreQueueStateAsync()
         {
-            await Task.Delay(3000); // Ждём подключения к qBittorrent
+            await Task.Delay(3000);
 
             try
             {
@@ -703,7 +790,8 @@ namespace HydraTorrent
 
                     var allTorrents = await client.GetTorrentListAsync();
 
-                    // Проверяем каждый элемент очереди
+                    bool hasActiveDownload = false;
+
                     foreach (var item in DownloadQueue)
                     {
                         if (string.IsNullOrEmpty(item.TorrentHash)) continue;
@@ -713,19 +801,61 @@ namespace HydraTorrent
 
                         if (torrent == null) continue;
 
-                        // Синхронизируем статус с тем, что в qBittorrent
                         bool isPaused = torrent.State.ToString().Contains("Paused");
+                        bool isComplete = torrent.Progress >= 1.0;
 
-                        if (item.QueueStatus == "Downloading" && isPaused)
+                        if (isComplete && item.QueueStatus != "Completed")
                         {
-                            // Должна качаться, но на паузе — возможно ручной пауза
-                            logger.Debug($"Торрент {item.Name} на паузе в qBittorrent");
+                            logger.Info($"Восстановление: обнаружена завершённая загрузка {item.Name}");
+                            item.QueueStatus = "Completed";
+                            SaveQueue();
+                            continue;
+                        }
+
+                        if (item.QueueStatus == "Downloading")
+                        {
+                            if (isPaused)
+                            {
+                                logger.Info($"Восстановление: возобновляем прерванную загрузку {item.Name}");
+                                await client.ResumeAsync(item.TorrentHash);
+                                hasActiveDownload = true;
+                            }
+                            else
+                            {
+                                hasActiveDownload = true;
+                            }
                         }
                         else if (item.QueueStatus == "Queued" && !isPaused)
                         {
-                            // Должна быть на паузе, но качается — ставим на паузу
                             await client.PauseAsync(item.TorrentHash);
-                            logger.Info($"Поставлен на паузу (из очереди): {item.Name}");
+                            logger.Info($"Восстановление: поставлен на паузу {item.Name}");
+                        }
+                    }
+
+                    if (!hasActiveDownload)
+                    {
+                        var nextQueued = DownloadQueue
+                            .Where(q => q.QueueStatus == "Queued")
+                            .OrderBy(q => q.QueuePosition)
+                            .FirstOrDefault();
+
+                        if (nextQueued != null)
+                        {
+                            logger.Info($"Восстановление: авто-старт следующей загрузки {nextQueued.Name}");
+                            nextQueued.QueueStatus = "Downloading";
+                            RecalculateQueuePositions();
+                            SaveQueue();
+                            await client.ResumeAsync(nextQueued.TorrentHash);
+
+                            if (nextQueued.GameId.HasValue)
+                            {
+                                var game = PlayniteApi.Database.Games.Get(nextQueued.GameId.Value);
+                                if (game != null)
+                                {
+                                    game.IsInstalling = true;
+                                    PlayniteApi.Database.Games.Update(game);
+                                }
+                            }
                         }
                     }
                 }
@@ -765,6 +895,54 @@ namespace HydraTorrent
         public ScraperService GetScraperService()
         {
             return _scraperService;
+        }
+
+        public void PauseDownload(Guid gameId)
+        {
+            var queueItem = DownloadQueue.FirstOrDefault(q => q.GameId == gameId);
+            if (queueItem == null) return;
+
+            queueItem.QueueStatus = "Paused";
+            SaveQueue();
+
+            try
+            {
+                var qb = settings.Settings;
+                var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+                using (var client = new QBittorrentClient(url))
+                {
+                    client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "").Wait();
+                    client.PauseAsync(queueItem.TorrentHash).Wait();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "[PauseDownload] Failed");
+            }
+        }
+
+        public void ResumeDownload(Guid gameId)
+        {
+            var queueItem = DownloadQueue.FirstOrDefault(q => q.GameId == gameId);
+            if (queueItem == null) return;
+
+            queueItem.QueueStatus = "Downloading";
+            SaveQueue();
+
+            try
+            {
+                var qb = settings.Settings;
+                var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
+                using (var client = new QBittorrentClient(url))
+                {
+                    client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "").Wait();
+                    client.ResumeAsync(queueItem.TorrentHash).Wait();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "[ResumeDownload] Failed");
+            }
         }
     }
 }

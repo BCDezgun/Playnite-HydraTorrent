@@ -1,5 +1,6 @@
 ﻿using HydraTorrent.Models;
 using HydraTorrent.Services;
+using HydraTorrent.Services.Discord;
 using HydraTorrent.Views;
 using Newtonsoft.Json.Linq;
 using Playnite.SDK;
@@ -8,17 +9,18 @@ using QBittorrent.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 
 namespace HydraTorrent.Services
 {
-    public class TorrentMonitor : IDisposable
+    public class TorrentMonitor : ITorrentMonitor, IDisposable
     {
         private readonly IPlayniteAPI _api;
         private readonly HydraTorrent _plugin;
-        private readonly Timer _timer;
-        private readonly QBittorrentClient _client;
+        private readonly QBittorrentClientFactory _clientFactory;
+        private CancellationTokenSource _cancellationTokenSource;
+        private Task _monitorTask;
         private bool _isRunning;
         private GameSetupService _gameSetupService;
         private CompletedManager _completedManager;
@@ -29,69 +31,148 @@ namespace HydraTorrent.Services
         public static readonly ILogger logger = LogManager.GetLogger();
 
         private StatisticsManager _statisticsManager;
+        
+        // Discord Rich Presence
+        private DiscordAssetResolver _discordAssetResolver;
+        private DiscordRichPresenceService _discordService;
+        private DateTime _lastDiscordUpdate = DateTime.MinValue;
+        private const int DISCORD_UPDATE_INTERVAL_SEC = 10;
 
         public TorrentMonitor(IPlayniteAPI api, HydraTorrent plugin)
         {
             _api = api;
             _plugin = plugin;
-            _timer = new Timer(3000);
-            _timer.Elapsed += Timer_Elapsed;
-
-            var qb = _plugin.GetSettings().Settings;
-            var url = new Uri($"http://{qb.QBittorrentHost}:{qb.QBittorrentPort}");
-            _client = new QBittorrentClient(url);
-            _gameSetupService = new GameSetupService(_plugin);
+            _cancellationTokenSource = new CancellationTokenSource();
+            _clientFactory = plugin.GetClientFactory();
+            _gameSetupService = plugin.Resolve<IGameSetupService>() as GameSetupService;
             _completedManager = null;
-
-            _statisticsManager = new StatisticsManager(plugin.GetPluginUserDataPath(), _completedManager);
-            _statisticsManager.Load();
+            _statisticsManager = null;
         }
 
         // ────────────────────────────────────────────────────────────────
         // Запуск и остановка мониторинга
         // ────────────────────────────────────────────────────────────────
 
+        private int GetPollIntervalMs()
+        {
+            var queue = _plugin.DownloadQueue;
+            if (queue != null && queue.Any(q => q.QueueStatus == "Downloading"))
+                return 1000;
+            return 10000;
+        }
+
         public void Start()
         {
             if (_isRunning) return;
 
-            Task.Run(async () =>
+            _monitorTask = Task.Run(async () =>
             {
+                QBittorrentClient client = null;
                 try
                 {
-                    var qb = _plugin.GetSettings().Settings;
-                    await _client.LoginAsync(qb.QBittorrentUsername, qb.QBittorrentPassword ?? "");
+                    client = await _clientFactory.CreateClientAsync();
 
                     // ✅ Инициализируем менеджеры из плагина (ПОСЛЕ подключения к qBittorrent)
                     InitializeManagers();
 
-                    _timer.Start();
                     _isRunning = true;
                     HydraTorrent.logger.Info("Hydra Monitor: qBittorrent connected.");
+
+                    // ✅ Основной цикл мониторинга
+                    while (!_cancellationTokenSource.Token.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            await MonitorTickAsync(client);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                        catch (QBittorrentClientRequestException ex) when (ex.Message.Contains("403") || ex.Message.Contains("Forbidden"))
+                        {
+                            HydraTorrent.logger.Warn($"Hydra Monitor: Session expired (403), reconnecting...");
+                            try
+                            {
+                                _clientFactory.Invalidate();
+                                client = await _clientFactory.CreateClientAsync();
+                                HydraTorrent.logger.Info("Hydra Monitor: Reconnected successfully.");
+                            }
+                            catch (Exception reconnectEx)
+                            {
+                                HydraTorrent.logger.Warn($"Hydra Monitor: Reconnect failed: {reconnectEx.Message}");
+                            }
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            HydraTorrent.logger.Warn("Hydra Monitor: Client disposed, reconnecting...");
+                            try
+                            {
+                                _clientFactory.Invalidate();
+                                client = await _clientFactory.CreateClientAsync();
+                                HydraTorrent.logger.Info("Hydra Monitor: Reconnected successfully.");
+                            }
+                            catch (Exception reconnectEx)
+                            {
+                                HydraTorrent.logger.Warn($"Hydra Monitor: Reconnect failed: {reconnectEx.Message}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            HydraTorrent.logger.Error(ex, "Error during torrent monitoring tick.");
+                        }
+
+                        try
+                        {
+                            var delay = GetPollIntervalMs();
+                            await Task.Delay(delay, _cancellationTokenSource.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
                     HydraTorrent.logger.Warn($"Hydra Monitor: Could not connect to qBittorrent. {ex.Message}");
+                }
+                finally
+                {
+                    _isRunning = false;
                 }
             });
         }
 
         public void Stop()
         {
-            _timer.Stop();
+            if (!_isRunning) return;
+
+            _cancellationTokenSource.Cancel();
             _isRunning = false;
+
+            try
+            {
+                _monitorTask?.Wait(TimeSpan.FromSeconds(5));
+            }
+            catch
+            {
+                // Игнорируем ошибки при остановке
+            }
         }
 
         public void Dispose()
         {
             Stop();
+            _cancellationTokenSource?.Dispose();
+            _discordService?.Dispose();
         }
 
         // ────────────────────────────────────────────────────────────────
         // Основной цикл мониторинга
         // ────────────────────────────────────────────────────────────────
 
-        private async void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        private async Task MonitorTickAsync(QBittorrentClient client)
         {
             if (!_isRunning) return;
 
@@ -102,42 +183,38 @@ namespace HydraTorrent.Services
                 if (_completedManager == null) return;
             }
 
-            try
+            HydraTorrent.logger.Debug("[DEBUG] MonitorTick сработал");
+            var torrents = await client.GetTorrentListAsync();
+
+            var hydraGames = _api.Database.Games
+                .Where(g => g.PluginId == _plugin.Id)
+                .ToList();
+
+            foreach (var torrent in torrents)
             {
-                HydraTorrent.logger.Debug("[DEBUG] Timer_Elapsed сработал");
-                var torrents = await _client.GetTorrentListAsync();
+                var targetGame = hydraGames.FirstOrDefault(g =>
+                    _plugin.GetHydraData(g)?.TorrentHash == torrent.Hash);
 
-                var hydraGames = _api.Database.Games
-                    .Where(g => g.PluginId == _plugin.Id)
-                    .ToList();
-
-                foreach (var torrent in torrents)
+                if (targetGame != null)
                 {
-                    var targetGame = hydraGames.FirstOrDefault(g =>
-                        _plugin.GetHydraData(g)?.TorrentHash == torrent.Hash);
-
-                    if (targetGame != null)
-                    {
-                        UpdateGameProgress(targetGame, torrent);
-                    }
+                    UpdateGameProgress(targetGame, torrent);
                 }
-
-                // ✅ Управление очередью (каждые 3 секунды)
-                await ManageQueueAsync();
-
-                // ✅ Проверка завершённых
-                await CheckCompletedDownloadsAsync();
-
-                // ✅ Проверка ratio для автоудаления
-                await CheckSeedRatioAsync();
             }
-            catch (Exception ex)
-            {
-                HydraTorrent.logger.Error(ex, "Error during torrent monitoring tick.");
-            }
+
+            // ✅ Управление очередью (каждые 3 секунды)
+            await ManageQueueAsync(client);
+
+            // ✅ Проверка завершённых
+            await CheckCompletedDownloadsAsync(client);
+
+            // ✅ Проверка ratio для автоудаления
+            await CheckSeedRatioAsync(client);
+            
+            // ✅ Обновление Discord Rich Presence (раз в 15 сек)
+            UpdateDiscordPresence();
         }
 
-        private async Task ManageQueueAsync()
+        private async Task ManageQueueAsync(QBittorrentClient client)
         {
             try
             {
@@ -155,7 +232,7 @@ namespace HydraTorrent.Services
                     priorityDownload = queue.FirstOrDefault(q => q.QueueStatus == "Downloading");
                 }
 
-                var allTorrents = await _client.GetTorrentListAsync();
+                var allTorrents = await client.GetTorrentListAsync();
 
                 foreach (var item in queue)
                 {
@@ -171,7 +248,7 @@ namespace HydraTorrent.Services
                         // Приоритетная загрузка — должна работать
                         if (torrent.State.ToString().Contains("Paused"))
                         {
-                            await _client.ResumeAsync(item.TorrentHash);
+                            await client.ResumeAsync(item.TorrentHash);
 
                             // ✅ Фиксируем время начала если ещё не зафиксировано
                             if (item.GameId.HasValue && !_downloadStartTimes.ContainsKey(item.GameId.Value))
@@ -196,7 +273,7 @@ namespace HydraTorrent.Services
                         if (!torrent.State.ToString().Contains("Paused") &&
                             !torrent.State.ToString().Contains("Complete"))
                         {
-                            await _client.PauseAsync(item.TorrentHash);
+                            await client.PauseAsync(item.TorrentHash);
                         }
                     }
                 }
@@ -207,7 +284,7 @@ namespace HydraTorrent.Services
             }
         }
 
-        private async Task CheckCompletedDownloadsAsync()
+        private async Task CheckCompletedDownloadsAsync(QBittorrentClient client)
         {
             try
             {
@@ -228,7 +305,7 @@ namespace HydraTorrent.Services
                     }
                 }
 
-                var allTorrents = await _client.GetTorrentListAsync();
+                var allTorrents = await client.GetTorrentListAsync();
                 var settings = _plugin.GetSettings().Settings;
 
                 foreach (var item in activeItems)
@@ -327,7 +404,7 @@ namespace HydraTorrent.Services
         // Проверка ratio для автоудаления
         // ────────────────────────────────────────────────────────────────
 
-        private async Task CheckSeedRatioAsync()
+        private async Task CheckSeedRatioAsync(QBittorrentClient client)
         {
             try
             {
@@ -344,7 +421,7 @@ namespace HydraTorrent.Services
                 if (!completedItems.Any())
                     return;
 
-                var allTorrents = await _client.GetTorrentListAsync();
+                var allTorrents = await client.GetTorrentListAsync();
                 var ratioThreshold = settings.GetSeedRatioValue();
 
                 foreach (var item in completedItems)
@@ -393,11 +470,23 @@ namespace HydraTorrent.Services
         {
             if (_completedManager == null)
             {
-                _completedManager = _plugin.GetCompletedManager();
+                _completedManager = _plugin.Resolve<ICompletedManager>() as CompletedManager;
             }
             if (_statisticsManager == null)
             {
-                _statisticsManager = _plugin.GetStatisticsManager();
+                _statisticsManager = _plugin.Resolve<IStatisticsManager>() as StatisticsManager;
+            }
+            
+            // Discord Rich Presence
+            if (_discordAssetResolver == null && _plugin.GetSettings().Settings.EnableDiscordRichPresence)
+            {
+                _discordAssetResolver = new DiscordAssetResolver();
+                
+                if (_discordAssetResolver.LoadAssets())
+                {
+                    _discordService = new DiscordRichPresenceService(_discordAssetResolver, _plugin.PlayniteApi);
+                    _discordService.Initialize();
+                }
             }
         }
 
@@ -419,8 +508,8 @@ namespace HydraTorrent.Services
                     return false;
                 }
 
-                // DeleteAsync с deleteFiles = false — удаляет торрент, но НЕ файлы
-                await _client.DeleteAsync(hash, false);
+                var client = await _clientFactory.CreateClientAsync();
+                await client.DeleteAsync(hash, false);
                 HydraTorrent.logger.Info($"Торрент удалён из qBittorrent: {hash}");
                 return true;
             }
@@ -575,27 +664,6 @@ namespace HydraTorrent.Services
                 Seeds = torrent.TotalSeeds,
                 Peers = torrent.TotalLeechers
             };
-
-            // Обновляем статус в библиотеке Playnite
-            var status = _api.Database.CompletionStatuses
-                .FirstOrDefault(s => s.Name.StartsWith("Загрузка:", StringComparison.OrdinalIgnoreCase));
-
-            if (status == null)
-            {
-                status = new CompletionStatus(dynamicName);
-                _api.Database.CompletionStatuses.Add(status);
-            }
-            else
-            {
-                status.Name = dynamicName;
-                _api.Database.CompletionStatuses.Update(status);
-            }
-
-            if (game.CompletionStatusId != status.Id)
-            {
-                game.CompletionStatusId = status.Id;
-                _api.Database.Games.Update(game);
-            }
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -605,6 +673,64 @@ namespace HydraTorrent.Services
         public CompletedManager GetCompletedManager()
         {
             return _completedManager;
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Discord Rich Presence
+        // ────────────────────────────────────────────────────────────────
+
+        private void UpdateDiscordPresence()
+        {
+            if (!_plugin.GetSettings().Settings.EnableDiscordRichPresence || _discordService == null)
+                return;
+
+            // Discord обновляется раз в 10 секунд
+            if (DateTime.UtcNow - _lastDiscordUpdate < TimeSpan.FromSeconds(DISCORD_UPDATE_INTERVAL_SEC))
+                return;
+
+            try
+            {
+                var queue = _plugin.DownloadQueue;
+                if (queue == null || !queue.Any())
+                {
+                    _discordService.Clear();
+                    return;
+                }
+
+                var activeDownload = queue.FirstOrDefault(q => q.QueueStatus == "Downloading");
+
+                if (activeDownload != null && activeDownload.GameId.HasValue)
+                {
+                    if (HydraTorrent.LiveStatus.TryGetValue(activeDownload.GameId.Value, out var status))
+                    {
+                        _discordService.UpdateDownloading(activeDownload, status);
+                        _lastDiscordUpdate = DateTime.UtcNow;
+                    }
+                }
+                else
+                {
+                    // Проверяем, есть ли игра на паузе
+                    var pausedDownload = queue.FirstOrDefault(q => q.QueueStatus == "Paused");
+                    
+                    if (pausedDownload != null && pausedDownload.GameId.HasValue)
+                    {
+                        if (HydraTorrent.LiveStatus.TryGetValue(pausedDownload.GameId.Value, out var status))
+                        {
+                            _discordService.UpdatePaused(pausedDownload, status);
+                            _lastDiscordUpdate = DateTime.UtcNow;
+                        }
+                    }
+                    else
+                    {
+                        // Если нет активных загрузок и пауз, очищаем статус
+                        _discordService.Clear();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "[Discord] Error updating Rich Presence");
+            }
         }
     }
 }

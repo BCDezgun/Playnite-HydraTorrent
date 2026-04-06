@@ -18,10 +18,11 @@ namespace HydraTorrent.Services
     /// <summary>
     /// Сервис для анализа загруженных игр и настройки запуска
     /// </summary>
-    public class GameSetupService
+    public class GameSetupService : IGameSetupService
     {
         private readonly HydraTorrent _plugin;
         private readonly IPlayniteAPI _api;
+        private readonly QBittorrentClientFactory _clientFactory;
 
         // ────────────────────────────────────────────────────────────────
         // Константы порогов уверенности
@@ -121,6 +122,7 @@ namespace HydraTorrent.Services
         {
             _plugin = plugin;
             _api = plugin.PlayniteApi;
+            _clientFactory = plugin.GetClientFactory();
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -216,7 +218,7 @@ namespace HydraTorrent.Services
                 if (string.IsNullOrEmpty(torrentHash))
                     return baseDownloadPath;
 
-                var client = CreateQBittorrentClient();
+                var client = await _clientFactory.CreateClientAsync();
                 if (client == null)
                     return baseDownloadPath;
 
@@ -251,34 +253,6 @@ namespace HydraTorrent.Services
             {
                 HydraTorrent.logger.Error(ex, $"Ошибка получения реального пути: {ex.Message}");
                 return baseDownloadPath;
-            }
-        }
-
-        /// <summary>
-        /// Создаёт клиент qBittorrent
-        /// </summary>
-        private QBittorrentClient CreateQBittorrentClient()
-        {
-            try
-            {
-                var settings = _plugin.GetSettings().Settings;
-                if (!settings.UseQbittorrent)
-                    return null;
-
-                var uri = new Uri($"http://{settings.QBittorrentHost}:{settings.QBittorrentPort}");
-                var client = new QBittorrentClient(uri);
-
-                if (!string.IsNullOrEmpty(settings.QBittorrentUsername))
-                {
-                    client.LoginAsync(settings.QBittorrentUsername, settings.QBittorrentPassword ?? "").Wait();
-                }
-
-                return client;
-            }
-            catch (Exception ex)
-            {
-                HydraTorrent.logger.Error(ex, "Ошибка создания qBittorrent клиента");
-                return null;
             }
         }
 
@@ -385,18 +359,26 @@ namespace HydraTorrent.Services
             return await Task.Run(() =>
             {
                 var executables = GetAllExecutables(downloadPath);
-                var candidates = new List<ExecutableCandidate>();
+                var candidates = new System.Collections.Concurrent.ConcurrentBag<ExecutableCandidate>();
 
-                foreach (var exe in executables)
+                // Параллельная обработка файлов (максимум 4 потока)
+                Parallel.ForEach(executables, new ParallelOptions { MaxDegreeOfParallelism = 4 }, exe =>
                 {
-                    var candidate = CalculateConfidenceScore(exe, gameName, downloadPath);
-                    if (candidate.ConfidenceScore >= CONFIDENCE_SHOW_IN_LIST)
+                    try
                     {
-                        candidates.Add(candidate);
+                        var candidate = CalculateConfidenceScore(exe, gameName, downloadPath);
+                        if (candidate.ConfidenceScore >= CONFIDENCE_SHOW_IN_LIST)
+                        {
+                            candidates.Add(candidate);
+                        }
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        HydraTorrent.logger.Debug($"Ошибка обработки {exe.Name}: {ex.Message}");
+                    }
+                });
 
-                return candidates;
+                return candidates.ToList();
             });
         }
 

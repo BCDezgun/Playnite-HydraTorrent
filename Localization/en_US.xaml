@@ -20,14 +20,18 @@
     <sys:String x:Key="LOC_HydraTorrent_SearchButton">Search</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Searching">🔎 Searching «{0}»...</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_EnterGameName">Enter game name!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourcesNotConfigured">No repack sources configured. Check settings.</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoResults">Nothing found 😔</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ResultsFound">Found: {0}</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Sources">Sources</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_AllSources">All sources</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SearchFilters">Search Filters</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_MoreFilters">More filters coming soon...</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoResultsForFilters">No results for selected filters</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_GameAdded">✅ «{0}» added!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_FetchingMetadata">Fetching game info...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_IgdbSettings">Search Suggestions (IGDB)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_IgdbDesc">Auto-complete game names while typing in the search bar</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_IgdbGetKey">Get free keys from</sys:String>
 
     <!-- Pagination -->
     <sys:String x:Key="LOC_HydraTorrent_PageInfo">Page {1} of {2} ({0} results)</sys:String>
@@ -284,5 +288,54 @@
     <sys:String x:Key="LOC_HydraTorrent_WebView2NotFound">not found</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_WebView2RequiredDesc">Sources with Cloudflare protection cannot be loaded. Please install Microsoft WebView2 Runtime.</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_WebView2Download">Download WebView2 Runtime</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     DOWNLOAD PROGRESS BUTTON
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_DownloadProgressText">Downloading {0}% ({1} MB/s)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadProgressNoSpeed">Downloading {0}%</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PausedProgressText">Paused {0}%</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QueuedProgressText">Queued (#{0})</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     AUTO METADATA DOWNLOAD
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_AutoMetadataSettings">Auto Metadata Download Settings</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AutoDownloadMetadata">Automatically download metadata after adding game to library</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SteamGridDbDesc">API Key for downloading covers, backgrounds and icons</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SteamGridDbGetKey">Get for free:</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     MISSING KEYS
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_BrowseShort">Browse</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionErrorTitle">Connection Error</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionTest">Test Connection</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeletedFromLibrary">Removed from library: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadPaths">Download Paths</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameNotFound">Game not found</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoDownloadToDelete">No active download to delete</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoneSelected">None selected</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Okay">OK</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QBittorrentDisabled">qBittorrent is disabled. Enable it in settings.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemovedFromQueue">Removed from queue: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromQueueTitle">Remove from Queue</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackDetected">Repack detected: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackSources">Repack Sources</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ResumedDownload">Download resumed: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectInstallPath">Select installation path</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourceHint">Enter JSON file URL</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Status">Status</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Success">Success</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_UseQbittorrent">Use qBittorrent</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TypeFilter">Release Type</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TypeAll">All</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     DISCORD RICH PRESENCE
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_DiscordSettings">Discord Rich Presence</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EnableDiscordRichPresence">Show download status in Discord</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DiscordRichPresenceInfo">Displays current download in your Discord profile. Popular games show their cover art.</sys:String>
 
 </ResourceDictionary>

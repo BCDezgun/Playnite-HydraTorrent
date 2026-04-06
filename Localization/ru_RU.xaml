@@ -21,10 +21,15 @@
     <sys:String x:Key="LOC_HydraTorrent_Searching">🔎 Ищем «{0}»...</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoResults">Ничего не найдено 😔</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_ResultsFound">Найдено: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourcesNotConfigured">Источники репаков не настроены. Проверьте настройки.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EnterGameName">Введите название игры!</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_FetchingMetadata">Получаем информацию об игре...</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_IgdbSettings">Подсказки при поиске (IGDB)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_IgdbDesc">Автоподсказки названий игр при вводе в строку поиска</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_IgdbGetKey">Получить бесплатно:</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_Sources">Источники</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_AllSources">Все источники</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_SearchFilters">Фильтры поиска</sys:String>
-    <sys:String x:Key="LOC_HydraTorrent_MoreFilters">Больше фильтров скоро...</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_NoResultsForFilters">Нет результатов для выбранных фильтров</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_GameAdded">✅ «{0}» добавлена!</sys:String>
 
@@ -283,5 +288,54 @@
     <sys:String x:Key="LOC_HydraTorrent_WebView2NotFound">не найден</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_WebView2RequiredDesc">Источники с защитой Cloudflare не смогут загрузиться. Установите WebView2 Runtime от Microsoft.</sys:String>
     <sys:String x:Key="LOC_HydraTorrent_WebView2Download">Скачать WebView2 Runtime</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     DOWNLOAD PROGRESS BUTTON
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_DownloadProgressText">Загрузка {0}% ({1} МБ/с)</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadProgressNoSpeed">Загрузка {0}%</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_PausedProgressText">Пауза {0}%</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QueuedProgressText">В очереди (#{0})</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     AUTO METADATA DOWNLOAD
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_AutoMetadataSettings">Настройки автозагрузки метаданных</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_AutoDownloadMetadata">Автоматически загружать метаданные после добавления игры в библиотеку</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SteamGridDbDesc">API Ключ для загрузки обложек, фонов и иконок</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SteamGridDbGetKey">Получить бесплатно:</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     MISSING KEYS
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_BrowseShort">Обзор</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionErrorTitle">Ошибка подключения</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ConnectionTest">Проверить подключение</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DeletedFromLibrary">Удалено из библиотеки: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DownloadPaths">Пути загрузки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_GameNotFound">Игра не найдена</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoDownloadToDelete">Нет активной загрузки для удаления</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_NoneSelected">Ничего не выбрано</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Okay">ОК</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_QBittorrentDisabled">qBittorrent отключён. Включите его в настройках.</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemovedFromQueue">Удалено из очереди: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RemoveFromQueueTitle">Удалить из очереди</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackDetected">Репак обнаружен: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_RepackSources">Источники репаков</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_ResumedDownload">Загрузка возобновлена: {0}</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SelectInstallPath">Выберите путь установки</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_SourceHint">Введите URL JSON-файла</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Status">Статус</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_Success">Успешно</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_UseQbittorrent">Использовать qBittorrent</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TypeFilter">Тип раздачи</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_TypeAll">Все</sys:String>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+     DISCORD RICH PRESENCE
+     ═══════════════════════════════════════════════════════════════════ -->
+    <sys:String x:Key="LOC_HydraTorrent_DiscordSettings">Discord Rich Presence</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_EnableDiscordRichPresence">Показывать статус загрузки в Discord</sys:String>
+    <sys:String x:Key="LOC_HydraTorrent_DiscordRichPresenceInfo">Отображает текущую загрузку в вашем профиле Discord. Для популярных игр показывается обложка.</sys:String>
 
 </ResourceDictionary>

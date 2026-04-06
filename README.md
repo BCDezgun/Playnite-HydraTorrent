@@ -1,4 +1,4 @@
-# 🐙 HydraTorrent
+# 🐉 HydraTorrent
 
 **Download Manager Plugin for Playnite**
 
@@ -6,11 +6,11 @@
 
 <div align="center">
 
-[🇬 English](#-english) • [🇷🇺 Русский](#-русский)
+[🇬🇧 English](#-english) • [🇷🇺 Русский](#-русский)
 
 ![Playnite Plugin](https://img.shields.io/badge/Playnite-Plugin-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![C#](https://img.shields.io/badge/C%23-.NET%206-purple)
+![Version](https://img.shields.io/badge/Version-2.0.0-orange)
 
 </div>
 
@@ -34,36 +34,48 @@
 
 ## 📖 Description
 
-**HydraTorrent** is a library plugin for [Playnite](https://playnite.link/) that integrates torrent download management directly into your game library. It works with qBittorrent to provide a seamless download experience with queue management, priority settings, and real-time status tracking.
+**HydraTorrent** is a library plugin for [Playnite](https://playnite.link/) that integrates torrent download management directly into your game library. It works with qBittorrent to provide a seamless download experience with intelligent automation, queue management, and real-time status tracking.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 🔍 Search & Library
-- Search for games from configurable sources
-- Filter results by source
-- Search history with quick access
-- Automatic game import to Playnite library
+### 🤖 Smart Automation
+- **Auto Game Setup** — Detects game type (Repack/Portable) and configures Play/Install actions automatically
+- **IGDB Autocomplete** — Real-time game name suggestions as you type
+- **Steam Metadata** — Auto-downloads game info, artwork, and covers (25+ languages)
+- **SteamGridDB Integration** — High-quality covers, backgrounds, and icons
 
 ### 📥 Download Management
-- **Queue System** — Add multiple games to download queue
-- **Priority Management** — Move games up/down in queue
-- **Force Start** — Start any queued game immediately
+- **Queue System** — Add multiple games with priority control
+- **Force Start** — Prioritize any queued download instantly
 - **Auto-Continue** — Next game starts automatically when current completes
-- **Pause/Resume** — Full control over active downloads
+- **Pause/Resume** — Full control with instant UI feedback
+- **Speed Graphs** — Real-time download/upload visualization
 
-### 📊 Real-Time Monitoring
-- Download speed graph
-- Progress bar with ETA
-- Current & maximum speed display
-- Background images from Playnite library
+### 📊 Tracking & Stats
+- **Statistics Dashboard** — Track downloads, size, time, speed, ratio, and top games
+- **Completed Tab** — History with completion date, size, ratio, and duration
+- **Discord Rich Presence** — Show what you're downloading with game artwork
+- **Seeding Settings** — Configure ratio thresholds and auto-removal
 
-### 🛠 Integration
-- qBittorrent API integration
-- Custom download paths
-- Torrent data persistence
-- State recovery after restart
+### 🎨 Visual Polish
+- **Game Preview Banner** — See game info before searching torrents
+- **2:3 Aspect Ratio Covers** — Native vertical covers (no cropping!)
+- **Animated UI** — Search button effects, fade-in transitions
+- **Background Images** — Immersive game artwork with gradient mask
+
+---
+
+## 📸 Screenshots
+
+### Search & Add to Library
+![Search Demo](docs/search-demo.gif)
+*IGDB autocomplete, game preview, Steam metadata auto-download*
+
+### Download & Discord Integration
+![Download Demo](docs/download-demo.gif)
+*Progress overlay, speed graphs, Discord Rich Presence*
 
 ---
 
@@ -80,15 +92,8 @@
 
 ## 🚀 Installation
 
-### Method 1: Automatic (not available yet)
-1. Open Playnite
-2. Go to **Add-ons** → **Plugins**
-3. Find **HydraTorrent** in the list
-4. Click **Install**
-
-### Method 2: Manual
 1. Download the latest release from [Releases](https://github.com/BCDezgun/Playnite-HydraTorrent/releases)
-2. Extract files to: `%AppData%\Playnite\Extensions\HydraTorrent`
+2. Double-click the `.pext` file to install
 3. Restart Playnite
 4. Configure qBittorrent connection in plugin settings
 
@@ -108,40 +113,41 @@
 1. Open Playnite
 2. Go to **Settings** → **Plugins** → **HydraTorrent**
 3. Enter qBittorrent connection details
-4. Configure default download path (optional)
-5. Save settings
+4. (Optional) Add SteamGridDB API key for artwork
+5. (Optional) Configure seeding settings
+6. Save settings
 
 ---
 
 ## 🎮 Usage
 
-### Adding Games to Queue
-1. Open **Hydra Hub** from sidebar
-2. Search for a game
-3. Double-click to add to library
-4. Click **Install** to start download or add to queue
+### Adding Games
+1. Open **Hydra Hub** from sidebar (🐉 icon)
+2. Type game name (autocomplete suggestions appear)
+3. Click search or select from suggestions
+4. Double-click result to add to library
+5. Click **Install** to start download
 
 ### Managing Queue
-| Button | Action |
-|--------|--------|
-| ⬆️ | Move game up in queue |
-| ⬇️ | Move game down in queue |
-| ▶️ | Force start this game |
-| ❌ | Remove from queue |
+- **⬆️⬇️** — Move game up/down in queue
+- **▶️** — Force start this game
+- **⏸️** — Pause/Resume download
+- **❌** — Remove from queue
 
-### During Download
-- View real-time speed graph
-- Pause/Resume with one click
-- Delete torrent and files via settings menu
-- Next game auto-starts when completed
+### After Download
+- **Repack** — Install action created automatically
+- **Portable** — Play action created, game ready to launch
+- **Statistics** — View in Statistics tab
+- **Completed** — Check Completed tab for history
 
 ---
 
-## 📸 Screenshots
+## 📌 Theme Integration (Optional)
 
-| Search | Download Manager | Queue |
-|--------|-----------------|-------|
-| ![Search](screenshots/search_EN.png) | ![Downloads](screenshots/downloads_EN.png) | ![Queue](screenshots/queue_EN.png) |
+**For FusionX theme users:** To enable download progress overlay in game details, add the integration file to:
+%AppData%\Playnite\Themes\Desktop\FusionX\Views\
+
+Download: [DetailsViewGameOverview.xaml](https://github.com/BCDezgun/Playnite-HydraTorrent/releases)
 
 ---
 
@@ -151,7 +157,8 @@
 |---------|----------|
 | Cannot connect to qBittorrent | Check Web UI is enabled and credentials are correct |
 | Downloads don't start | Verify download path exists and has write permissions |
-| Queue doesn't auto-continue | Ensure qBittorrent connection is stable |
+| No autocomplete suggestions | Check internet connection (IGDB API required) |
+| No game covers | Add SteamGridDB API key in settings |
 | UI doesn't update | Restart Playnite or reload plugin |
 
 ---
@@ -182,7 +189,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ---
 
 <a id="-русский"></a>
-# 🇷 Русский
+# 🇷🇺 Русский
 
 ## ⚠️ Отказ от ответственности
 
@@ -199,36 +206,48 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📖 Описание
 
-**HydraTorrent** — это библиотечный плагин для [Playnite](https://playnite.link/), который интегрирует управление торрент-загрузками прямо в вашу игровую библиотеку. Плагин работает с qBittorrent и предоставляет удобный интерфейс для управления очередью загрузок, приоритетами и отслеживанием статуса в реальном времени.
+**HydraTorrent** — это библиотечный плагин для [Playnite](https://playnite.link/), который интегрирует управление торрент-загрузками прямо в вашу игровую библиотеку. Плагин работает с qBittorrent и предоставляет удобный интерфейс с интеллектуальной автоматизацией, управлением очередью и отслеживанием статуса в реальном времени.
 
 ---
 
-## ✨ Возможности
+## ✨ Основные возможности
 
-### 🔍 Поиск и библиотека
-- Поиск игр из настраиваемых источников
-- Фильтрация результатов по источнику
-- История поиска с быстрым доступом
-- Автоматический импорт игр в библиотеку Playnite
+### 🤖 Умная автоматизация
+- **Автонастройка игр** — Определяет тип игры (Repack/Portable) и создаёт действия автоматически
+- **Автодополнение IGDB** — Подсказки названий игр в реальном времени
+- **Метаданные Steam** — Автозагрузка информации, обложек и артов (25+ языков)
+- **Интеграция SteamGridDB** — Высококачественные обложки, фоны и иконки
 
 ### 📥 Управление загрузками
-- **Система очереди** — Добавление нескольких игр в очередь загрузок
-- **Управление приоритетами** — Перемещение игр вверх/вниз по очереди
-- **Принудительный запуск** — Немедленный запуск любой игры из очереди
-- **Авто-продолжение** — Следующая игра запускается автоматически после завершения текущей
-- **Пауза/Возобновление** — Полный контроль над активными загрузками
+- **Система очереди** — Добавление нескольких игр с управлением приоритетами
+- **Принудительный запуск** — Мгновенный запуск любой игры из очереди
+- **Авто-продолжение** — Следующая игра запускается автоматически
+- **Пауза/Возобновление** — Полный контроль с мгновенной обратной связью
+- **Графики скорости** — Визуализация загрузки/отдачи в реальном времени
 
-### 📊 Мониторинг в реальном времени
-- График скорости загрузки
-- Прогресс-бар с оставшимся временем
-- Отображение текущей и максимальной скорости
-- Фоновые изображения из библиотеки Playnite
+### 📊 Отслеживание и статистика
+- **Панель статистики** — Отслеживание загрузок, размера, времени, скорости, рейтинга
+- **Вкладка завершённых** — История с датой, размером, рейтингом и длительностью
+- **Discord Rich Presence** — Показывайте что скачиваете с обложкой игры
+- **Настройки сидирования** — Настройка порогов рейтинга и автоудаления
 
-### 🛠 Интеграция
-- Интеграция с qBittorrent API
-- Настраиваемые пути загрузки
-- Сохранение данных торрентов
-- Восстановление состояния после перезапуска
+### 🎨 Визуальная полировка
+- **Баннер превью игры** — Информация об игре перед поиском торрентов
+- **Обложки 2:3** — Нативные вертикальные обложки (без обрезки!)
+- **Анимированный UI** — Эффекты кнопки поиска, плавные переходы
+- **Фоновые изображения** — Иммерсивные арты игр с градиентной маской
+
+---
+
+## 📸 Скриншоты
+
+### Поиск и добавление в библиотеку
+![Демо поиска](docs/search-demo.gif)
+*Автодополнение IGDB, превью игры, автозагрузка метаданных Steam*
+
+### Загрузка и интеграция с Discord
+![Демо загрузки](docs/download-demo.gif)
+*Оверлей прогресса, графики скорости, Discord Rich Presence*
 
 ---
 
@@ -245,15 +264,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 🚀 Установка
 
-### Способ 1: Автоматическая (пока недоступно)
-1. Откройте Playnite
-2. Перейдите в **Дополнения** → **Плагины**
-3. Найдите **HydraTorrent** в списке
-4. Нажмите **Установить**
-
-### Способ 2: Ручная
 1. Скачайте последнюю версию из [Releases](https://github.com/BCDezgun/Playnite-HydraTorrent/releases)
-2. Распакуйте файлы в: `%AppData%\Playnite\Extensions\HydraTorrent`
+2. Дважды кликните на файл `.pext` для установки
 3. Перезапустите Playnite
 4. Настройте подключение к qBittorrent в настройках плагина
 
@@ -273,40 +285,40 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 1. Откройте Playnite
 2. Перейдите в **Настройки** → **Плагины** → **HydraTorrent**
 3. Введите данные подключения к qBittorrent
-4. Настройте путь загрузки по умолчанию (опционально)
-5. Сохраните настройки
+4. (Опционально) Добавьте API ключ SteamGridDB для артов
+5. (Опционально) Настройте параметры сидирования
+6. Сохраните настройки
 
 ---
 
 ## 🎮 Использование
 
-### Добавление игр в очередь
-1. Откройте **Hydra Hub** из боковой панели
-2. Найдите игру
-3. Дважды кликните для добавления в библиотеку
-4. Нажмите **Установить** для начала загрузки или добавления в очередь
+### Добавление игр
+1. Откройте **Hydra Hub** из боковой панели (иконка 🐉)
+2. Введите название игры (появятся подсказки автодополнения)
+3. Нажмите поиск или выберите из подсказок
+4. Дважды кликните на результат для добавления в библиотеку
+5. Нажмите **Установить** для начала загрузки
 
 ### Управление очередью
-| Кнопка | Действие |
-|--------|----------|
-| ⬆️ | Поднять игру выше в очереди |
-| ⬇️ | Опустить игру ниже в очереди |
-| ▶️ | Принудительно запустить эту игру |
-| ❌ | Удалить из очереди |
+- **⬆️⬇️** — Переместить игру вверх/вниз в очереди
+- **▶️** — Принудительно запустить эту игру
+- **⏸️** — Пауза/Возобновление загрузки
+- **❌** — Удалить из очереди
 
-### Во время загрузки
-- Просмотр графика скорости в реальном времени
-- Пауза/Возобновление одним кликом
-- Удаление торрента и файлов через меню настроек
-- Следующая игра запускается автоматически после завершения
+### После загрузки
+- **Repack** — Действие установки создано автоматически
+- **Portable** — Действие запуска создано, игра готова к запуску
+- **Статистика** — Просмотр во вкладке Статистика
+- **Завершённые** — Проверьте вкладку Завершённые для истории
 
 ---
 
-## 📸 Скриншоты
+## 📌 Интеграция с темой (Опционально)
 
-| Поиск | Менеджер загрузок | Очередь |
-|-------|-------------------|---------|
-| ![Поиск](screenshots/search.png) | ![Загрузки](screenshots/downloads.png) | ![Очередь](screenshots/queue.png) |
+**Для пользователей темы FusionX:** Чтобы включить оверлей прогресса загрузки в деталях игры, добавьте файл интеграции в:
+%AppData%\Playnite\Themes\Desktop\FusionX\Views\
+Скачать: [DetailsViewGameOverview.xaml](https://github.com/BCDezgun/Playnite-HydraTorrent/releases)
 
 ---
 
@@ -316,7 +328,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 |----------|---------|
 | Не удаётся подключиться к qBittorrent | Проверьте что Веб-интерфейс включен и учётные данные верны |
 | Загрузки не начинаются | Убедитесь что путь загрузки существует и есть права на запись |
-| Очередь не авто-продолжается | Убедитесь что подключение к qBittorrent стабильно |
+| Нет подсказок автодополнения | Проверьте интернет-соединение (требуется IGDB API) |
+| Нет обложек игр | Добавьте API ключ SteamGridDB в настройках |
 | UI не обновляется | Перезапустите Playnite или перезагрузите плагин |
 
 ---

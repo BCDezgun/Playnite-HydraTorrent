@@ -77,7 +77,7 @@ namespace HydraTorrent.Services
     /// <summary>
     /// Менеджер для управления статистикой загрузок
     /// </summary>
-    public class StatisticsManager
+    public class StatisticsManager : IStatisticsManager
     {
         private readonly CompletedManager _completedManager;
         private const string StatisticsFileName = "statistics.json";

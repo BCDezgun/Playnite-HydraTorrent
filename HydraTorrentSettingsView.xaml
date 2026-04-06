@@ -124,6 +124,70 @@
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════════════
+                 Auto Metadata Download
+                 ═══════════════════════════════════════════════════════════ -->
+            <Separator Margin="0,15,0,15"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_AutoMetadataSettings}"
+                       FontWeight="Bold"
+                       FontSize="16"
+                       Margin="0,0,0,10"/>
+
+            <CheckBox x:Name="ChkAutoMetadata"
+                      Content="{DynamicResource LOC_HydraTorrent_AutoDownloadMetadata}"
+                      IsChecked="{Binding Settings.AutoDownloadMetadata}"
+                      Margin="0,0,0,10"/>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 SteamGridDB
+                 ═══════════════════════════════════════════════════════════ -->
+            <TextBlock Text="SteamGridDB"
+                       FontWeight="Bold"
+                       FontSize="16"
+                       Margin="0,0,0,10"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_SteamGridDbDesc}"
+                       FontSize="12"
+                       Foreground="#888"
+                       Margin="0,0,8,0"
+                       TextWrapping="Wrap"/>
+
+            <TextBlock FontSize="11" Foreground="#888" Margin="0,0,8,0" TextWrapping="Wrap">
+                <TextBlock Text="{DynamicResource LOC_HydraTorrent_SteamGridDbGetKey}"/>
+                <Hyperlink NavigateUri="https://www.steamgriddb.com/profile/preferences/api"
+                           RequestNavigate="SteamGridDbLink_RequestNavigate">
+                    https://www.steamgriddb.com/profile/preferences/api
+                </Hyperlink>
+            </TextBlock>
+
+            <TextBox x:Name="SteamGridDbKeyBox"
+                     Text="{Binding Settings.SteamGridDbApiKey}"
+                     IsEnabled="{Binding IsChecked, ElementName=ChkAutoMetadata}"
+                     Margin="0,12,0,10"
+                     Padding="5"
+                     ToolTip="SteamGridDB API key"/>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 Discord Rich Presence
+                 ═══════════════════════════════════════════════════════════ -->
+            <Separator Margin="0,15,0,15"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_DiscordSettings}"
+                       FontWeight="Bold"
+                       FontSize="16"
+                       Margin="0,0,0,10"/>
+
+            <CheckBox Content="{DynamicResource LOC_HydraTorrent_EnableDiscordRichPresence}"
+                      IsChecked="{Binding Settings.EnableDiscordRichPresence}"
+                      Margin="0,0,0,10"/>
+
+            <TextBlock Text="{DynamicResource LOC_HydraTorrent_DiscordRichPresenceInfo}"
+                       FontSize="12"
+                       Foreground="#888"
+                       Margin="25,0,0,10"
+                       TextWrapping="Wrap"/>
+
+            <!-- ═══════════════════════════════════════════════════════════
                  Sources (ORIGINAL STYLE)
                  ═══════════════════════════════════════════════════════════ -->
             <Separator Margin="0,15,0,15"/>

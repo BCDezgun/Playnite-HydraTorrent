@@ -3,6 +3,13 @@ using HydraTorrent.Models;
 
 namespace HydraTorrent.Models
 {
+    public enum RepackType
+    {
+        Repack,
+        Portable,
+        Other
+    }
+
     public class TorrentResult
     {
         public string Name { get; set; }
@@ -14,6 +21,11 @@ namespace HydraTorrent.Models
         public string TorrentHash { get; set; }
         public DateTime? UploadDate { get; set; }
         public long SizeBytes { get; set; }
+
+        /// <summary>
+        /// Тип раздачи (определяется по названию при поиске)
+        /// </summary>
+        public RepackType RepackType { get; set; } = RepackType.Other;
 
         // ────────────────────────────────────────────────────────────────
         // Свойства для системы очереди загрузок
@@ -100,6 +112,42 @@ namespace HydraTorrent.Models
             TotalDownloadedBytes = 0;
             TotalUploadedBytes = 0;
             AverageDownloadSpeed = 0;
+        }
+
+        private static readonly string[] RepackIndicators = new[]
+        {
+            "repack", "fitgirl", "dodi", "xatab", "elamigos",
+            "kaos", "kapitalsin", "cpym", "darkumbra", "skidrow",
+            "codex", "plaza", "hoodlum", "razor1911", "flt",
+            "gog-freedom", "reloaded", "prophet", "goldberg"
+        };
+
+        private static readonly string[] PortableIndicators = new[]
+        {
+            "portable", "standalone", "[gog]", "[gog] ",
+            "[папка игры]", "[папка", "[folder]",
+            "no-install", "no install", "pre-installed"
+        };
+
+        public static RepackType DetectRepackType(string title)
+        {
+            if (string.IsNullOrEmpty(title)) return RepackType.Other;
+
+            var lower = title.ToLowerInvariant();
+
+            foreach (var indicator in PortableIndicators)
+            {
+                if (lower.Contains(indicator))
+                    return RepackType.Portable;
+            }
+
+            foreach (var indicator in RepackIndicators)
+            {
+                if (lower.Contains(indicator))
+                    return RepackType.Repack;
+            }
+
+            return RepackType.Other;
         }
     }
 }

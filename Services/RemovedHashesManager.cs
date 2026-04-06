@@ -11,7 +11,7 @@ namespace HydraTorrent.Services
     /// Менеджер для хранения хешей торрентов, удалённых пользователем из вкладки "Завершённые".
     /// Используется для предотвращения повторного появления игр в окне загрузки.
     /// </summary>
-    public class RemovedHashesManager
+    public class RemovedHashesManager : IRemovedHashesManager
     {
         private readonly HydraTorrent _plugin;
         private const string RemovedHashesFileName = "removed_hashes.json";

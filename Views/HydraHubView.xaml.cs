@@ -14,12 +14,14 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
@@ -47,12 +49,21 @@ namespace HydraTorrent.Views
         private readonly Queue<long> _uploadHistory = new Queue<long>();
         private long _uploadMaxSpeed = 1;
 
-        private readonly Dictionary<Guid, BitmapImage> _coverCache = new Dictionary<Guid, BitmapImage>();
+        private readonly LruCache<Guid, BitmapImage> _coverCache = new LruCache<Guid, BitmapImage>(50);
 
         private List<TorrentResult> _allResults = new List<TorrentResult>();
         private List<TorrentResult> _filteredResults = new List<TorrentResult>();
         private int _currentPage = 1;
         private const int _itemsPerPage = 10;
+
+        private GamePreviewInfo _currentPreviewInfo = null;
+        private BitmapImage _currentPreviewCover = null;
+
+        private GameSearchSuggestionsService _suggestionsService;
+        private DispatcherTimer _debounceTimer;
+        private CancellationTokenSource _debounceCts;
+        private bool _isSelectingSuggestion = false;
+        private bool _suppressSuggestions = false;
 
         private string _sortByColumn = null;
         private bool _sortAscending = false;
@@ -123,6 +134,60 @@ namespace HydraTorrent.Views
             UpdateQueueUI();
             UpdateDownloadUI(null, null);
             InitCompletedAndStatistics();
+            InitSearchSuggestions();
+        }
+
+        private void InitSearchSuggestions()
+        {
+            _suggestionsService = new GameSearchSuggestionsService();
+
+            _debounceTimer = new DispatcherTimer();
+            _debounceTimer.Interval = TimeSpan.FromMilliseconds(200);
+            _debounceTimer.Tick += DebounceTimer_Tick;
+
+            // Предзагрузка токена IGDB в фоне
+            _ = _suggestionsService.PreloadTokenAsync();
+        }
+
+        private void DebounceTimer_Tick(object sender, EventArgs e)
+        {
+            _debounceTimer.Stop();
+            _ = FetchSuggestionsAsync();
+        }
+
+        private async Task FetchSuggestionsAsync()
+        {
+            if (_suggestionsService == null) return;
+
+            _debounceCts?.Cancel();
+            _debounceCts = new CancellationTokenSource();
+            var token = _debounceCts.Token;
+
+            var query = txtSearch.Text.Trim();
+            if (query.Length < 2)
+            {
+                SuggestionsPopup.IsOpen = false;
+                lstSuggestions.ItemsSource = null;
+                return;
+            }
+
+            var suggestions = await _suggestionsService.GetSuggestionsAsync(query);
+            if (token.IsCancellationRequested) return;
+
+            // Обновляем содержимое БЕЗ закрытия/открытия попапа
+            lstSuggestions.ItemsSource = suggestions;
+            lstSuggestions.SelectedIndex = -1;
+
+            // Открываем попап только если он закрыт И есть результаты
+            if (suggestions.Any() && !SuggestionsPopup.IsOpen)
+            {
+                SuggestionsPopup.IsOpen = true;
+            }
+            // Закрываем только если нет результатов
+            else if (!suggestions.Any())
+            {
+                SuggestionsPopup.IsOpen = false;
+            }
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -626,6 +691,28 @@ namespace HydraTorrent.Views
 
         private void UIUpdateTimer_Tick(object sender, EventArgs e)
         {
+            // ────────────────────────────────────────────────────────────────
+            // ✅ ДИНАМИЧЕСКАЯ ОПТИМИЗАЦИЯ: Изменяем интервал в зависимости от активности
+            // ────────────────────────────────────────────────────────────────
+            var hasActiveDownloads = _plugin.DownloadQueue.Any(q => q.QueueStatus == "Downloading");
+            
+            if (hasActiveDownloads)
+            {
+                // Есть активные загрузки - обновляем каждую секунду
+                if (_uiRefreshTimer.Interval != TimeSpan.FromSeconds(1))
+                {
+                    _uiRefreshTimer.Interval = TimeSpan.FromSeconds(1);
+                }
+            }
+            else
+            {
+                // Нет активных загрузок - замедляем до 5 секунд
+                if (_uiRefreshTimer.Interval != TimeSpan.FromSeconds(5))
+                {
+                    _uiRefreshTimer.Interval = TimeSpan.FromSeconds(5);
+                }
+            }
+
             // ────────────────────────────────────────────────────────────────
             // ✅ ПРОВЕРКА: Актуальна ли ещё запомненная игра?
             // ────────────────────────────────────────────────────────────────
@@ -1235,17 +1322,35 @@ namespace HydraTorrent.Views
         {
             if (_allResults == null || !_allResults.Any()) return;
 
-            if (IsAllSourcesSelected)
-            {
-                _filteredResults = _allResults;
-            }
-            else
+            var results = _allResults.AsEnumerable();
+
+            if (!IsAllSourcesSelected)
             {
                 var activeSources = FilterSources.Where(x => x.IsSelected).Select(x => x.Name).ToList();
-                _filteredResults = _allResults.Where(r => activeSources.Contains(r.Source)).ToList();
+                results = results.Where(r => activeSources.Contains(r.Source));
             }
 
+            var selectedType = GetSelectedRepackType();
+            if (selectedType.HasValue)
+            {
+                results = results.Where(r => r.RepackType == selectedType.Value);
+            }
+
+            _filteredResults = results.ToList();
+
             ShowPage(1);
+        }
+
+        private RepackType? GetSelectedRepackType()
+        {
+            if (rbTypeRepack.IsChecked == true) return RepackType.Repack;
+            if (rbTypePortable.IsChecked == true) return RepackType.Portable;
+            return null;
+        }
+
+        private void RbTypeFilter_Changed(object sender, RoutedEventArgs e)
+        {
+            ApplyLocalFilters();
         }
 
         private void UpdateSourceButtonText()
@@ -1276,12 +1381,6 @@ namespace HydraTorrent.Views
             await PerformSearch();
         }
 
-        private async void TxtSearch_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-                await PerformSearch();
-        }
-
         private async Task PerformSearch()
         {
             var query = txtSearch.Text.Trim();
@@ -1310,9 +1409,20 @@ namespace HydraTorrent.Views
             btnSearch.IsEnabled = false;
             pnlPagination.Children.Clear();
 
+            StartSearchButtonAnimation();
+            HideGamePreview();
+            HideResultsList();
+
             try
             {
-                var results = await _scraperService.SearchAsync(query);
+                var steamTask = FetchGamePreviewAsync(query);
+                var repackTask = _scraperService.SearchAsync(query);
+
+                await Task.WhenAll(steamTask, repackTask);
+
+                var previewInfo = await steamTask;
+                var results = await repackTask;
+
                 _allResults = results ?? new List<TorrentResult>();
 
                 _sortByColumn = null;
@@ -1328,6 +1438,13 @@ namespace HydraTorrent.Views
                 {
                     ApplyLocalFilters();
                 }
+
+                if (previewInfo != null)
+                {
+                    await ShowGamePreviewAnimated(previewInfo);
+                }
+
+                ShowResultsListAnimated();
             }
             catch (Exception ex)
             {
@@ -1335,7 +1452,265 @@ namespace HydraTorrent.Views
             }
             finally
             {
+                StopSearchButtonAnimation();
                 btnSearch.IsEnabled = true;
+            }
+        }
+
+        private Rectangle _shimmerRect;
+        private TranslateTransform _shimmerTranslate;
+        private ScaleTransform _breathingScale;
+
+        private void StartSearchButtonAnimation()
+        {
+            StartBreathing();
+            StartShimmer();
+        }
+
+        private void StartBreathing()
+        {
+            _breathingScale = new ScaleTransform(1, 1);
+            btnSearch.RenderTransform = _breathingScale;
+            btnSearch.RenderTransformOrigin = new Point(0.5, 0.5);
+
+            var scaleXAnim = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 1.05,
+                Duration = TimeSpan.FromMilliseconds(1200),
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+            };
+            var scaleYAnim = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 1.05,
+                Duration = TimeSpan.FromMilliseconds(1200),
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            _breathingScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleXAnim, HandoffBehavior.SnapshotAndReplace);
+            _breathingScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleYAnim, HandoffBehavior.SnapshotAndReplace);
+        }
+
+        private void StartShimmer()
+        {
+            _shimmerRect = FindTemplateChild<Rectangle>(btnSearch, "ShimmerRect");
+            if (_shimmerRect == null) return;
+
+            _shimmerRect.Visibility = Visibility.Visible;
+            _shimmerTranslate = new TranslateTransform(-80, 0);
+            _shimmerRect.RenderTransform = _shimmerTranslate;
+
+            var shimmerAnim = new DoubleAnimation
+            {
+                From = -80,
+                To = 200,
+                Duration = TimeSpan.FromMilliseconds(1500),
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = null
+            };
+
+            _shimmerTranslate.BeginAnimation(TranslateTransform.XProperty, shimmerAnim, HandoffBehavior.SnapshotAndReplace);
+        }
+
+        private void StopSearchButtonAnimation()
+        {
+            StopBreathing();
+            StopShimmer();
+        }
+
+        private void StopBreathing()
+        {
+            if (_breathingScale != null)
+            {
+                _breathingScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                _breathingScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                btnSearch.RenderTransform = null;
+                _breathingScale = null;
+            }
+        }
+
+        private void StopShimmer()
+        {
+            if (_shimmerRect != null)
+            {
+                _shimmerTranslate?.BeginAnimation(TranslateTransform.XProperty, null);
+                _shimmerRect.Visibility = Visibility.Hidden;
+                _shimmerRect.RenderTransform = null;
+                _shimmerRect = null;
+                _shimmerTranslate = null;
+            }
+        }
+
+        private T FindTemplateChild<T>(Button parent, string name) where T : FrameworkElement
+        {
+            if (parent == null) return null;
+            var child = parent.Template?.FindName(name, parent);
+            if (child is T t) return t;
+            return null;
+        }
+
+        private void HideResultsList()
+        {
+            lstResults.Opacity = 0;
+            lstResults.Visibility = Visibility.Collapsed;
+        }
+
+        private void ShowResultsListAnimated()
+        {
+            lstResults.Visibility = Visibility.Visible;
+            var animation = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromMilliseconds(400),
+                EasingFunction = new System.Windows.Media.Animation.QuadraticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+            };
+            lstResults.BeginAnimation(UIElement.OpacityProperty, animation);
+        }
+
+        private async Task<GamePreviewInfo> FetchGamePreviewAsync(string query)
+        {
+            try
+            {
+                var metadataService = new SteamMetadataService(PlayniteApi);
+                var (appId, name, englishName, year, genres, developers, description) = await metadataService.SearchGameAsync(query);
+
+                if (appId == 0)
+                {
+                    return null;
+                }
+
+                var info = new GamePreviewInfo
+                {
+                    SteamAppId = appId,
+                    Name = name ?? query,
+                    EnglishName = englishName ?? name ?? query,
+                    Year = year,
+                    Genres = genres != null && genres.Any() ? string.Join(", ", genres) : null,
+                    Developers = developers != null && developers.Any() ? string.Join(", ", developers) : null,
+                    Description = description
+                };
+
+                var sgdbApiKey = _plugin.GetSettings().Settings.SteamGridDbApiKey;
+                if (!string.IsNullOrEmpty(sgdbApiKey))
+                {
+                    try
+                    {
+                        var sgdb = new SteamGridDbService(PlayniteApi, sgdbApiKey);
+                        // Используем английское название для поиска в SteamGridDB
+                        info.CoverUrl = await sgdb.GetCoverUrlForPreviewAsync(info.EnglishName, info.Year);
+                        HydraTorrent.logger.Debug($"[GamePreview] Cover URL: {info.CoverUrl ?? "null"}");
+                    }
+                    catch (Exception sgdbEx)
+                    {
+                        HydraTorrent.logger.Warn($"[GamePreview] SteamGridDB failed: {sgdbEx.Message}");
+                    }
+                }
+
+                return info;
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Warn($"[GamePreview] FetchGamePreviewAsync failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        private async Task LoadCoverImageAsync(string url)
+        {
+            try
+            {
+                using (var client = new System.Net.Http.HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(10);
+                    var bytes = await client.GetByteArrayAsync(url);
+
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.StreamSource = new System.IO.MemoryStream(bytes);
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.EndInit();
+                        imgPreviewCover.Source = bitmap;
+                    });
+
+                    HydraTorrent.logger.Debug($"[GamePreview] Cover loaded: {bytes.Length} bytes");
+                }
+            }
+            catch (Exception ex)
+            {
+                HydraTorrent.logger.Warn($"[GamePreview] Failed to load cover: {ex.Message}");
+                await Dispatcher.InvokeAsync(() => imgPreviewCover.Source = null);
+            }
+        }
+
+        private async Task ShowGamePreviewAnimated(GamePreviewInfo info)
+        {
+            _currentPreviewInfo = info;
+
+            if (string.IsNullOrEmpty(info.CoverUrl))
+            {
+                imgPreviewCover.Source = null;
+            }
+            else
+            {
+                _ = LoadCoverImageAsync(info.CoverUrl);
+            }
+
+            txtPreviewName.Text = info.Year.HasValue
+                ? $"{info.Name} ({info.Year.Value})"
+                : info.Name;
+
+            txtPreviewGenres.Text = info.Genres ?? "";
+            txtPreviewDevelopers.Text = info.Developers ?? "";
+            txtPreviewDescription.Text = info.Description ?? "";
+
+            pnlGamePreview.Visibility = Visibility.Visible;
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                var animation = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(350),
+                    EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                };
+
+                var scaleAnimation = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(350),
+                    EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                };
+
+                pnlGamePreview.BeginAnimation(UIElement.OpacityProperty, animation);
+                ((ScaleTransform)pnlGamePreview.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+            });
+        }
+
+        private void HideGamePreview()
+        {
+            _currentPreviewInfo = null;
+            imgPreviewCover.Source = null;
+            txtPreviewName.Text = "";
+            txtPreviewGenres.Text = "";
+            txtPreviewDevelopers.Text = "";
+            txtPreviewDescription.Text = "";
+
+            pnlGamePreview.Visibility = Visibility.Collapsed;
+            pnlGamePreview.Opacity = 0;
+            var scaleTransform = pnlGamePreview.RenderTransform as ScaleTransform;
+            if (scaleTransform != null)
+            {
+                scaleTransform.ScaleY = 0;
             }
         }
 
@@ -1510,51 +1885,106 @@ namespace HydraTorrent.Views
 
         private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            var query = txtSearch.Text.ToLower().Trim();
-            var history = _plugin.GetSettings().Settings.SearchHistory;
+            var query = txtSearch.Text.Trim();
 
-            if (string.IsNullOrEmpty(query) || history == null || history.Count == 0)
-            {
-                HistoryPopup.IsOpen = false;
-                return;
-            }
+            if (_suppressSuggestions) return;
 
-            var filtered = history.Where(h => h.ToLower().Contains(query)).Take(5).ToList();
-            if (filtered.Any())
+            if (_debounceTimer != null && !_isSelectingSuggestion)
             {
-                lstHistory.ItemsSource = filtered;
-                HistoryPopup.IsOpen = true;
+                _debounceTimer.Stop();
+                if (query.Length >= 2)
+                {
+                    _debounceTimer.Start();
+                }
+                else
+                {
+                    SuggestionsPopup.IsOpen = false;
+                }
             }
-            else
+        }
+
+        private async void TxtSearch_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
             {
-                HistoryPopup.IsOpen = false;
+                SuggestionsPopup.IsOpen = false;
+                await PerformSearch();
+            }
+        }
+
+        private void TxtSearch_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (!SuggestionsPopup.IsOpen || lstSuggestions.Items.Count == 0) return;
+
+            if (e.Key == Key.Down)
+            {
+                lstSuggestions.SelectedIndex = (lstSuggestions.SelectedIndex + 1) % lstSuggestions.Items.Count;
+                lstSuggestions.ScrollIntoView(lstSuggestions.SelectedItem);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up)
+            {
+                int newIndex = lstSuggestions.SelectedIndex - 1;
+                if (newIndex < 0) newIndex = lstSuggestions.Items.Count - 1;
+                lstSuggestions.SelectedIndex = newIndex;
+                lstSuggestions.ScrollIntoView(lstSuggestions.SelectedItem);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                SuggestionsPopup.IsOpen = false;
+                if (lstSuggestions.SelectedItem is string selectedEnter)
+                {
+                    _isSelectingSuggestion = true;
+                    _suppressSuggestions = true;
+                    txtSearch.Text = selectedEnter;
+                    txtSearch.CaretIndex = txtSearch.Text.Length;
+                    _isSelectingSuggestion = false;
+                    _suppressSuggestions = false;
+                }
+                _ = PerformSearch();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Space)
+            {
+                if (lstSuggestions.SelectedItem is string selectedSpace)
+                {
+                    _isSelectingSuggestion = true;
+                    txtSearch.Text = selectedSpace + " ";
+                    txtSearch.CaretIndex = txtSearch.Text.Length;
+                    _isSelectingSuggestion = false;
+                    _debounceTimer.Stop();
+                    _debounceTimer.Start();
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                SuggestionsPopup.IsOpen = false;
+                e.Handled = true;
             }
         }
 
         private void BtnDeleteHistory_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is string queryToRemove)
-            {
-                var settings = _plugin.GetSettings().Settings;
-                if (settings.SearchHistory.Contains(queryToRemove))
-                {
-                    settings.SearchHistory.Remove(queryToRemove);
-                    _plugin.SavePluginSettings(settings);
-                    TxtSearch_TextChanged(null, null);
-                }
-            }
-
             e.Handled = true;
         }
 
-        private void LstHistory_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void LstSuggestions_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (lstHistory.SelectedItem is string selectedQuery)
+            var listBox = sender as ListBox;
+            if (listBox?.SelectedItem is string suggestion)
             {
-                txtSearch.Text = selectedQuery;
-                HistoryPopup.IsOpen = false;
+                _isSelectingSuggestion = true;
+                txtSearch.Text = suggestion;
+                SuggestionsPopup.IsOpen = false;
+                _isSelectingSuggestion = false;
                 _ = PerformSearch();
             }
+        }
+
+        private void LstSuggestions_KeyDown(object sender, KeyEventArgs e)
+        {
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -1599,6 +2029,61 @@ namespace HydraTorrent.Views
                     txtStatus.Text = string.Format(
                         ResourceProvider.GetString("LOC_HydraTorrent_GameAdded"),
                         finalName);
+
+                    // ✅ Скачивание метаданных из Steam + картинок из SteamGridDB
+                    if (_plugin.GetSettings().Settings.AutoDownloadMetadata)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                HydraTorrent.logger.Info($"[SteamMetadata] Starting metadata download for: '{finalName}'");
+                                var metadataService = new SteamMetadataService(PlayniteApi);
+                                var game = PlayniteApi.Database.Games.Get(importedGame.Id);
+                                if (game == null)
+                                {
+                                    HydraTorrent.logger.Warn($"[SteamMetadata] Game not found: {importedGame.Id}");
+                                    return;
+                                }
+
+                                int steamAppId = 0;
+                                var applied = await metadataService.DownloadAndApplyMetadataAsync(game, finalName, (id) => steamAppId = id);
+
+                                // Картинки из SteamGridDB
+                                var sgdbApiKey = _plugin.GetSettings().Settings.SteamGridDbApiKey;
+                                if (!string.IsNullOrEmpty(sgdbApiKey) && steamAppId > 0)
+                                {
+                                    var sgdb = new SteamGridDbService(PlayniteApi, sgdbApiKey);
+                                    var imagesApplied = await sgdb.DownloadImagesAsync(game, steamAppId.ToString(), finalName, game.ReleaseDate?.Year);
+                                    if (imagesApplied)
+                                        HydraTorrent.logger.Info("[SteamGridDB] Images applied");
+                                }
+
+                                if (applied)
+                                {
+                                    using (PlayniteApi.Database.BufferedUpdate())
+                                    {
+                                        PlayniteApi.Database.Games.Update(game);
+                                    }
+                                    HydraTorrent.logger.Info($"[SteamMetadata] Metadata applied for: {game.Name}");
+
+                                    await Task.Delay(500);
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        PlayniteApi.MainView.SelectGame(importedGame.Id);
+                                    });
+                                }
+                                else
+                                {
+                                    HydraTorrent.logger.Info($"[SteamMetadata] No metadata changes for: {finalName}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                HydraTorrent.logger.Error(ex, "[SteamMetadata] Failed");
+                            }
+                        });
+                    }
                 }
             }
         }

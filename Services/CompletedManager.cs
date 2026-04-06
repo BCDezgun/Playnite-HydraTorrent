@@ -11,7 +11,7 @@ namespace HydraTorrent.Services
     /// <summary>
     /// Менеджер для управления списком завершённых загрузок
     /// </summary>
-    public class CompletedManager
+    public class CompletedManager : ICompletedManager
     {
         private readonly HydraTorrent _plugin;
         private const string CompletedFileName = "completed.json";
@@ -90,6 +90,11 @@ namespace HydraTorrent.Services
         // ────────────────────────────────────────────────────────────────
         // Доступ к RemovedHashesManager
         // ────────────────────────────────────────────────────────────────
+
+        IRemovedHashesManager ICompletedManager.GetRemovedHashesManager()
+        {
+            return _removedHashesManager;
+        }
 
         public RemovedHashesManager GetRemovedHashesManager()
         {

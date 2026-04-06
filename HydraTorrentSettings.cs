@@ -1,4 +1,5 @@
-﻿using Playnite.SDK;
+﻿using HydraTorrent.Services;
+using Playnite.SDK;
 using Playnite.SDK.Data;
 using System.Collections.Generic;
 
@@ -39,7 +40,21 @@ namespace HydraTorrent
         public string QBittorrentHost { get => qbHost; set => SetValue(ref qbHost, value); }
         public int QBittorrentPort { get => qbPort; set => SetValue(ref qbPort, value); }
         public string QBittorrentUsername { get => qbUsername; set => SetValue(ref qbUsername, value); }
-        public string QBittorrentPassword { get => qbPassword; set => SetValue(ref qbPassword, value); }
+        public string QBittorrentPassword
+        {
+            get => SecureStorage.Unprotect(qbPassword);
+            set
+            {
+                if (SecureStorage.IsProtected(value))
+                {
+                    qbPassword = value;
+                }
+                else
+                {
+                    SetValue(ref qbPassword, SecureStorage.Protect(value));
+                }
+            }
+        }
         public bool UseQbittorrent { get => useQbittorrent; set => SetValue(ref useQbittorrent, value); }
 
         // ────────────────────────────────────────────────────────────────
@@ -125,6 +140,52 @@ namespace HydraTorrent
                 _ => 1.0
             };
         }
+
+        // ────────────────────────────────────────────────────────────────
+        // SteamGridDB
+        // ────────────────────────────────────────────────────────────────
+        private string steamGridDbApiKey = "";
+
+        public string SteamGridDbApiKey
+        {
+            get => steamGridDbApiKey;
+            set => SetValue(ref steamGridDbApiKey, value);
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Автозагрузка метаданных
+        // ────────────────────────────────────────────────────────────────
+        private bool autoDownloadMetadata = true;
+
+        /// <summary>
+        /// Автоматически загружать метаданные (Steam + SteamGridDB) после добавления игры
+        /// </summary>
+        public bool AutoDownloadMetadata
+        {
+            get => autoDownloadMetadata;
+            set
+            {
+                SetValue(ref autoDownloadMetadata, value);
+                if (!value)
+                {
+                    OnPropertyChanged(nameof(SteamGridDbApiKey));
+                }
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // Discord Rich Presence
+        // ────────────────────────────────────────────────────────────────
+        private bool enableDiscordRichPresence = false;
+
+        /// <summary>
+        /// Показывать статус загрузки в Discord
+        /// </summary>
+        public bool EnableDiscordRichPresence
+        {
+            get => enableDiscordRichPresence;
+            set => SetValue(ref enableDiscordRichPresence, value);
+        }
     }
 
     public class HydraTorrentSettingsViewModel : ObservableObject, ISettings
@@ -163,6 +224,9 @@ namespace HydraTorrent
             // Перед сохранением принудительно забираем данные из UI
             SettingsView?.SaveSources();
             plugin.SavePluginSettings(Settings);
+
+            // ✅ Сбрасываем кеш клиента при изменении настроек подключения
+            plugin.GetClientFactory()?.Invalidate();
         }
 
         public bool VerifySettings(out List<string> errors)

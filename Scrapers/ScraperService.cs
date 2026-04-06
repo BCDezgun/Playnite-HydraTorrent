@@ -12,7 +12,9 @@ namespace HydraTorrent.Scrapers
     public class ScraperService
     {
         private readonly HttpClient _httpClient;
-        private readonly HydraTorrentSettings _settings; // Добавляем хранение настроек
+        private readonly HydraTorrentSettings _settings;
+        private readonly Dictionary<string, CachedResults> _searchCache = new Dictionary<string, CachedResults>();
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
 
         static ScraperService()
         {
@@ -23,7 +25,6 @@ namespace HydraTorrent.Scrapers
             ServicePointManager.DefaultConnectionLimit = 100;
         }
 
-        // В конструктор теперь передаем настройки плагина
         public ScraperService(HydraTorrentSettings settings)
         {
             _settings = settings;
@@ -44,6 +45,14 @@ namespace HydraTorrent.Scrapers
             if (string.IsNullOrWhiteSpace(query) || _settings.Sources == null || _settings.Sources.Count == 0)
                 return new List<TorrentResult>();
 
+            var cacheKey = query.Trim().ToLowerInvariant();
+
+            if (_searchCache.TryGetValue(cacheKey, out var cached) && DateTime.Now - cached.Timestamp < _cacheDuration)
+            {
+                HydraTorrent.logger.Debug($"[SearchCache] Hit for '{query}' ({cached.Results.Count} results)");
+                return cached.Results;
+            }
+
             var scrapers = new List<IScraper>();
             foreach (var source in _settings.Sources)
             {
@@ -62,14 +71,35 @@ namespace HydraTorrent.Scrapers
                 }
                 catch (Exception ex)
                 {
-                    // Логируем ошибку, но не даем ей прервать поиск в других источниках
                     HydraTorrent.logger.Warn($"Ошибка поиска в источнике: {ex.Message}");
                     return new List<TorrentResult>();
                 }
             });
 
             var resultsArrays = await Task.WhenAll(tasks);
-            return resultsArrays.SelectMany(r => r).ToList();
+            var results = resultsArrays.SelectMany(r => r).ToList();
+
+            _searchCache[cacheKey] = new CachedResults { Results = results, Timestamp = DateTime.Now };
+
+            var expiredKeys = _searchCache.Where(kvp => DateTime.Now - kvp.Value.Timestamp > _cacheDuration).ToList();
+            foreach (var key in expiredKeys)
+            {
+                _searchCache.Remove(key.Key);
+            }
+
+            HydraTorrent.logger.Debug($"[SearchCache] Miss for '{query}' ({results.Count} results, cached)");
+            return results;
+        }
+
+        public void ClearCache()
+        {
+            _searchCache.Clear();
+        }
+
+        private class CachedResults
+        {
+            public List<TorrentResult> Results { get; set; }
+            public DateTime Timestamp { get; set; }
         }
     }
 
