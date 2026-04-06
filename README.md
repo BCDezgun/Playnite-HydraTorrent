@@ -70,11 +70,11 @@
 ## 📸 Screenshots
 
 ### Search & Add to Library
-![Search Demo](docs/search-demo.gif)
+![Search Demo](screenshots/search+add.gif)
 *IGDB autocomplete, game preview, Steam metadata auto-download*
 
 ### Download & Discord Integration
-![Download Demo](docs/download-demo.gif)
+![Download Demo](screenshots/download+discord.gif)
 *Progress overlay, speed graphs, Discord Rich Presence*
 
 ---
@@ -242,11 +242,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📸 Скриншоты
 
 ### Поиск и добавление в библиотеку
-![Демо поиска](docs/search-demo.gif)
+![Демо поиска](screenshots/search+add.gif)
 *Автодополнение IGDB, превью игры, автозагрузка метаданных Steam*
 
 ### Загрузка и интеграция с Discord
-![Демо загрузки](docs/download-demo.gif)
+![Демо загрузки](screenshots/download+discord.gif)
 *Оверлей прогресса, графики скорости, Discord Rich Presence*
 
 ---
